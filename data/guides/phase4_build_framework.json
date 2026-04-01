@@ -1,0 +1,370 @@
+{
+  "phase_id": 4,
+  "enrichments": {
+    "4-1-1": {
+      "key_points": [
+        "llama2.c: Andrej Karpathy用纯C实现的LLaMA-2推理，单文件~700行",
+        "核心结构: Transformer结构(Config+Weights+RunState)、前向推理循环、采样",
+        "关键函数: transformer()主循环、matmul()矩阵乘、softmax()、rmsnorm()",
+        "内存布局: 所有权重和状态连续存储在内存中(memory-mapped file)"
+      ],
+      "resources": [
+        {"name": "llama2.c GitHub", "url": "https://github.com/karpathy/llama2.c"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-1-01", "front": "llama2.c如何用纯C实现Transformer推理？", "back": "~700行C代码\n结构: Config(模型配置)+Weights(权重)+RunState(中间状态)\n权重: mmap加载.bin文件(零拷贝)\n前向: for each layer:\n  rmsnorm→attn(QKV+RoPE+softmax)→rmsnorm→ffn(SwiGLU)\n采样: temperature+top-p/argmax\n无依赖: 纯C，无BLAS库", "topic": "C推理", "day": "Day 46", "source": "llama2.c"}
+      ]
+    },
+    "4-1-2": {
+      "key_points": [
+        "动手编译运行llama2.c: gcc -O3 -o run run.c -lm && ./run model.bin",
+        "训练小模型: 用train.py训练一个tiny模型(15M参数)，导出.bin",
+        "性能分析: 纯C实现的瓶颈在matmul(没有BLAS优化)，tokens/s与模型大小成反比",
+        "优化方向: OpenMP多线程、SIMD指令、量化(int8)"
+      ],
+      "resources": [
+        {"name": "llama2.c README", "url": "https://github.com/karpathy/llama2.c#readme"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-1-02", "front": "llama2.c的性能瓶颈和优化方向？", "back": "瓶颈: matmul占95%+时间(无BLAS)\n优化:\n1. OpenMP多线程(#pragma omp parallel)\n2. SIMD指令(AVX2/AVX-512)\n3. INT8量化(权重1字节)\n4. 分块计算(cache友好)\n编译: gcc -O3 -fopenmp -march=native\n效果: 多线程+SIMD可提升5-10倍", "topic": "C推理", "day": "Day 46", "source": "llama2.c"}
+      ]
+    },
+    "4-2-1": {
+      "key_points": [
+        "llm.c: Karpathy的GPT-2训练实现，纯C+CUDA，无PyTorch依赖",
+        "训练循环: DataLoader→forward→backward→optimizer_step，全部手写",
+        "CUDA kernel: matmul用cuBLAS, layernorm/softmax/gelu自己写kernel",
+        "梯度计算: 手动实现每层的backward(不用autograd)"
+      ],
+      "resources": [
+        {"name": "llm.c GitHub", "url": "https://github.com/karpathy/llm.c"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-2-01", "front": "llm.c和PyTorch训练的区别？", "back": "PyTorch: autograd自动求梯度\n  动态图，Python调度\nllm.c: 手动实现每层backward\n  静态内存分配\n  CUDA kernel手写(除GEMM用cuBLAS)\n优势: 无Python开销\n  内存精确控制\n  理解训练底层原理\n代价: 开发效率低，不灵活", "topic": "C训练", "day": "Day 47", "source": "llm.c"}
+      ]
+    },
+    "4-2-2": {
+      "key_points": [
+        "编译运行llm.c: make train_gpt2cu && ./train_gpt2cu",
+        "数据准备: 用Python脚本下载并预处理数据(tokenize后存为二进制)",
+        "训练监控: 打印loss、tokens/s、学习率等指标",
+        "对比PyTorch: 相同模型相同数据，llm.c训练速度可以更快(减少Python开销)"
+      ],
+      "resources": [
+        {"name": "llm.c训练指南", "url": "https://github.com/karpathy/llm.c#quick-start"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-2-02", "front": "llm.c的手动backward关键点？", "back": "每层手写backward函数:\n  matmul_backward: dW=dY.T@X, dX=dY@W.T\n  layernorm_backward: 链式法则展开\n  gelu_backward: dX=dY*gelu'(X)\n  residual_backward: 直接传递梯度\n内存: 预分配所有梯度buffer\n  避免动态分配(malloc/free)\n优化: 梯度累积+gradient checkpointing", "topic": "C训练", "day": "Day 47", "source": "llm.c"}
+      ]
+    },
+    "4-3-1": {
+      "key_points": [
+        "KuiperLLama: C++实现的LLaMA推理框架，适合写进简历的项目",
+        "项目结构: include/(头文件)、src/(实现)、test/(测试)、model/(模型文件)",
+        "核心模块: Tensor、Buffer、Operator、Model、Runtime",
+        "构建: CMake构建系统，支持CPU和CUDA后端"
+      ],
+      "resources": [
+        {"name": "KuiperLLama GitHub", "url": "https://github.com/zjhellofss/KuiperLLama"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-3-01", "front": "KuiperLLama的核心模块设计？", "back": "Tensor: 多维数组抽象(shape/stride/data)\nBuffer: 内存管理(CPU/CUDA统一接口)\nOperator: 算子抽象(forward/backward)\n  RMSNorm/Attention/FFN/Embedding等\nModel: 组装Operator构成完整模型\nRuntime: 推理引擎(加载→执行→采样)\n构建: CMake + CPU/CUDA后端", "topic": "C++推理框架", "day": "Day 48", "source": "KuiperLLama"}
+      ]
+    },
+    "4-3-2": {
+      "key_points": [
+        "环境搭建: cmake -B build && cmake --build build",
+        "依赖: CMake 3.16+, C++17, glog, gtest, sentencepiece",
+        "运行推理: ./build/demo --model model.bin --prompt 'Once upon a time'",
+        "代码量: 约5000行C++，比vLLM简单但五脏俱全"
+      ],
+      "resources": [
+        {"name": "KuiperLLama构建指南", "url": "https://github.com/zjhellofss/KuiperLLama#readme"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-3-02", "front": "为什么用C++写推理框架有价值？", "back": "面试: 展示底层理解(内存管理/算子实现)\n性能: 无Python GIL，精确控制内存\n部署: 嵌入式/移动端/无Python环境\n学习: 理解PyTorch底层做了什么\n  Tensor如何存储/算子如何调度\n简历亮点: '从零实现LLM推理框架'\n  而不是'调用了vLLM的API'", "topic": "C++推理框架", "day": "Day 48", "source": "KuiperLLama"}
+      ]
+    },
+    "4-4-1": {
+      "key_points": [
+        "Tensor类: 封装shape、stride、dtype、data_ptr，支持多维索引和reshape",
+        "Buffer类: 管理底层内存，区分CPU Buffer和CUDA Buffer",
+        "内存管理: Buffer负责allocate/free，Tensor持有Buffer的shared_ptr(引用计数)",
+        "数据类型: 支持float32/float16/int8等，dtype决定每个元素的字节数"
+      ],
+      "resources": [
+        {"name": "KuiperLLama Tensor", "url": "https://github.com/zjhellofss/KuiperLLama"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-4-01", "front": "C++推理框架中Tensor和Buffer的关系？", "back": "Buffer: 底层内存管理\n  allocate(size)/free()\n  CPU Buffer: malloc/free\n  CUDA Buffer: cudaMalloc/cudaFree\nTensor: 高层数据抽象\n  shape + stride + dtype + Buffer*\n  shared_ptr<Buffer>引用计数\n  多个Tensor可以共享Buffer(view)\nreshape: 只改shape/stride，不动数据", "topic": "C++推理框架", "day": "Day 49", "source": "KuiperLLama"}
+      ]
+    },
+    "4-4-2": {
+      "key_points": [
+        "算子实现层: 每个算子(Operator)有CPU和CUDA两种实现",
+        "RMSNorm算子: CPU版用循环，CUDA版用kernel(每block一行)",
+        "MatMul算子: CPU版用循环或调OpenBLAS，CUDA版调cuBLAS",
+        "算子注册: 工厂模式，根据设备类型(CPU/CUDA)选择对应实现"
+      ],
+      "resources": [
+        {"name": "KuiperLLama算子", "url": "https://github.com/zjhellofss/KuiperLLama"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-4-02", "front": "推理框架中算子的多后端设计？", "back": "基类: Operator(抽象接口)\n  virtual forward(input) = 0\nCPU实现: RMSNormCPU, MatMulCPU\n  用循环或BLAS库\nCUDA实现: RMSNormCUDA, MatMulCUDA\n  自写kernel或cuBLAS\n工厂模式: 根据device选择实现\n  auto op = OpFactory::create('rmsnorm', device)\n好处: 上层代码不关心具体后端", "topic": "C++推理框架", "day": "Day 49", "source": "KuiperLLama"}
+      ]
+    },
+    "4-5-1": {
+      "key_points": [
+        "模型加载: 读取.bin文件，将权重映射到对应层的Tensor(mmap或read)",
+        "权重映射: 配置文件定义每层权重的名称、shape、offset",
+        "SafeTensors格式: HuggingFace的安全权重格式，header+数据分离",
+        "GGUF格式: llama.cpp的量化格式，支持INT4/INT8等多种量化"
+      ],
+      "resources": [
+        {"name": "KuiperLLama模型加载", "url": "https://github.com/zjhellofss/KuiperLLama"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-5-01", "front": "LLM权重文件的常见格式？", "back": "PyTorch .bin: pickle序列化的state_dict\n  加载慢，不安全(pickle可执行代码)\nSafeTensors: HuggingFace标准\n  header(JSON)+data，安全+mmap\nGGUF: llama.cpp格式\n  支持量化(Q4_0/Q5_K_M等)\n  单文件包含模型+tokenizer+config\n加载: mmap零拷贝(最快)\n  或read到Buffer(更通用)", "topic": "模型格式", "day": "Day 50", "source": "KuiperLLama"}
+      ]
+    },
+    "4-5-2": {
+      "key_points": [
+        "KV Cache实现: 预分配固定大小的Tensor，推理时逐token追加",
+        "数据结构: kv_cache[layer_id] = (K_cache, V_cache)，shape=[max_seq_len, n_kv_heads, head_dim]",
+        "追加: 每步将新token的K/V写入cache的下一个位置(position指针递增)",
+        "与PagedAttention区别: 这里是连续分配(简单实现)，PagedAttention是分页管理(生产级)"
+      ],
+      "resources": [
+        {"name": "KuiperLLama KV Cache", "url": "https://github.com/zjhellofss/KuiperLLama"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-5-02", "front": "简单KV Cache vs PagedAttention的区别？", "back": "简单KV Cache:\n  预分配max_seq_len连续内存\n  逐token追加，position递增\n  简单但浪费内存(最大长度预分配)\nPagedAttention:\n  按block(16 tokens)分页管理\n  按需分配，不需要连续内存\n  支持CoW、swap、prefix caching\n选择: 学习/单请求→简单KV Cache\n  生产/多请求→PagedAttention", "topic": "KV Cache", "day": "Day 50", "source": "KuiperLLama"}
+      ]
+    },
+    "4-6-1": {
+      "key_points": [
+        "推理主循环: 加载模型→预填充prompt→自回归生成→采样→输出",
+        "Prefill: 一次性处理所有prompt tokens，填充KV Cache",
+        "Decode: 循环生成，每步输入上一步的token，更新KV Cache，采样下一个token",
+        "采样策略: temperature(控制随机性)、top-p/top-k(截断分布)、greedy(argmax)"
+      ],
+      "resources": [
+        {"name": "KuiperLLama推理循环", "url": "https://github.com/zjhellofss/KuiperLLama"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-6-01", "front": "LLM推理的完整流程？", "back": "1. 加载: mmap权重→构建模型\n2. Tokenize: prompt→token_ids\n3. Prefill: 所有prompt tokens一次forward\n  填充KV Cache\n4. Decode循环:\n  while not done:\n    logits = model(last_token, kv_cache)\n    next_token = sample(logits, temp, top_p)\n    if next_token == eos: break\n5. Detokenize: token_ids→文本", "topic": "推理流程", "day": "Day 51", "source": "KuiperLLama"}
+      ]
+    },
+    "4-6-2": {
+      "key_points": [
+        "多轮对话支持: 维护完整的对话历史在KV Cache中",
+        "实现: 新一轮对话时，只prefill新的user消息(之前的KV Cache保留)",
+        "chat template: 将多轮对话格式化为模型期望的格式(system/user/assistant)",
+        "KV Cache管理: 对话过长时需要truncate(删除最旧的KV)或sliding window"
+      ],
+      "resources": [
+        {"name": "KuiperLLama多轮对话", "url": "https://github.com/zjhellofss/KuiperLLama"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-6-02", "front": "多轮对话如何复用KV Cache？", "back": "第1轮: prefill(system+user1)→generate→assistant1\n  KV Cache保留所有token的KV\n第2轮: 只prefill(user2)→拼接到已有KV Cache\n  →generate→assistant2\n节省: 不需要重新计算历史的KV\n问题: 对话太长→KV Cache超限\n解决: truncate旧KV或sliding window", "topic": "多轮对话", "day": "Day 51", "source": "KuiperLLama"}
+      ]
+    },
+    "4-7-1": {
+      "key_points": [
+        "GGUF: llama.cpp的模型格式，单文件包含metadata+tokenizer+量化权重",
+        "量化类型: Q4_0(4bit无偏移)、Q4_K_M(4bit K-quant中等)、Q5_K_M(5bit)、Q8_0(8bit)",
+        "K-quant: 使用k-means聚类优化量化，比均匀量化精度更高",
+        "文件结构: header(magic+version+metadata_count) → metadata(KV pairs) → tensor_data"
+      ],
+      "resources": [
+        {"name": "llama.cpp GitHub", "url": "https://github.com/ggerganov/llama.cpp"},
+        {"name": "GGUF格式规范", "url": "https://github.com/ggerganov/ggml/blob/master/docs/gguf.md"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-7-01", "front": "GGUF格式的量化类型怎么选？", "back": "Q4_0: 最快最小，精度损失大\nQ4_K_M: 4bit K-quant，推荐(速度/精度平衡)\nQ5_K_M: 5bit，精度更好，稍慢\nQ8_0: 8bit，精度几乎无损\n命名: Q{bits}_{method}_{size}\n  K=k-means, M=medium\n推荐: 7B用Q4_K_M，70B用Q4_0\n  有空间就用Q5_K_M", "topic": "量化", "day": "Day 52", "source": "llama.cpp"}
+      ]
+    },
+    "4-7-2": {
+      "key_points": [
+        "llama.cpp编译: cmake -B build && cmake --build build (支持CUDA/Metal/OpenCL)",
+        "模型转换: python convert.py model_dir --outtype f16/q4_0/q8_0",
+        "推理测试: ./build/bin/llama-cli -m model.gguf -p 'Hello' -n 128",
+        "服务模式: ./build/bin/llama-server -m model.gguf --port 8080 (OpenAI兼容API)"
+      ],
+      "resources": [
+        {"name": "llama.cpp使用指南", "url": "https://github.com/ggerganov/llama.cpp#usage"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-7-02", "front": "llama.cpp vs vLLM的适用场景？", "back": "llama.cpp:\n  CPU推理(无GPU也能跑)\n  边缘设备/移动端\n  单用户交互\n  GGUF量化格式\nvLLM:\n  GPU推理(高吞吐)\n  服务端多并发\n  PagedAttention+ContinuousBatch\n  HuggingFace模型格式\n选择: 有GPU+多用户→vLLM\n  无GPU/边缘→llama.cpp", "topic": "推理框架对比", "day": "Day 52", "source": "llama.cpp"}
+      ]
+    },
+    "4-8-1": {
+      "key_points": [
+        "TensorRT-LLM: NVIDIA官方LLM推理引擎，极致GPU性能优化",
+        "特点: 自动kernel fusion、INT4/INT8/FP8量化、Tensor Parallel、Inflight Batching",
+        "编译模型: 将HuggingFace模型转换为TensorRT engine(离线编译,运行时快)",
+        "vs vLLM: TRT-LLM性能更高(10-30%)但灵活性较低,模型支持有限"
+      ],
+      "resources": [
+        {"name": "TensorRT-LLM GitHub", "url": "https://github.com/NVIDIA/TensorRT-LLM"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-8-01", "front": "TensorRT-LLM vs vLLM的trade-off？", "back": "TensorRT-LLM:\n  性能最高(NVIDIA深度优化)\n  自动kernel fusion\n  需要离线编译(耗时)\n  模型支持有限\nvLLM:\n  灵活(Python,易扩展)\n  模型支持广\n  无需编译\n  性能略低10-30%\n选择: 性能极致→TRT-LLM\n  灵活/快速迭代→vLLM", "topic": "推理框架", "day": "Day 53", "source": "TensorRT-LLM"}
+      ]
+    },
+    "4-8-2": {
+      "key_points": [
+        "TRT-LLM部署步骤: 1.下载模型 2.转换格式 3.编译engine 4.启动服务",
+        "编译: trtllm-build --model_dir ./model --output_dir ./engine --dtype float16",
+        "量化: --quantization int8/int4_awq/fp8，编译时指定",
+        "服务: 使用Triton Inference Server部署TRT-LLM engine"
+      ],
+      "resources": [
+        {"name": "TensorRT-LLM快速开始", "url": "https://github.com/NVIDIA/TensorRT-LLM#quick-start"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-8-02", "front": "TensorRT-LLM的编译和部署流程？", "back": "1. 下载HuggingFace模型\n2. 转换: python convert_checkpoint.py\n3. 编译: trtllm-build --model_dir ...\n  --dtype float16 --tp_size 1\n  (耗时几分钟到几十分钟)\n4. 推理: python run.py --engine_dir ...\n5. 服务: Triton Inference Server\n注意: engine与GPU型号绑定\n  换GPU需要重新编译", "topic": "TensorRT-LLM", "day": "Day 53", "source": "TRT-LLM快速开始"}
+      ]
+    },
+    "4-9-1": {
+      "key_points": [
+        "推理框架选型: 根据场景选择合适的推理框架",
+        "性能排名(通常): TRT-LLM > vLLM ≈ SGLang > llama.cpp(GPU) > llama.cpp(CPU)",
+        "开发效率: vLLM/SGLang(Python) > TRT-LLM(需编译) > llama.cpp(C++)",
+        "部署灵活性: llama.cpp(全平台) > vLLM(GPU服务端) > TRT-LLM(NVIDIA GPU)"
+      ],
+      "resources": [
+        {"name": "推理框架对比", "url": "https://github.com/vllm-project/vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-9-01", "front": "不同推理框架的选型原则？", "back": "高性能服务: TRT-LLM(NVIDIA深度优化)\n通用服务: vLLM(灵活+高性能)\n复杂推理: SGLang(结构化输出)\n边缘/CPU: llama.cpp(全平台)\n学习/定制: KuiperLLama/nano-vllm\n关键指标: 吞吐量/延迟/灵活性/模型支持\n大原则: 能用vLLM就用vLLM", "topic": "框架选型", "day": "Day 54", "source": "综合对比"}
+      ]
+    },
+    "4-9-2": {
+      "key_points": [
+        "性能对比实验: 相同模型+相同硬件，测试不同框架的吞吐量和延迟",
+        "测试场景: 离线batch推理、在线serving(不同并发)、长序列处理",
+        "报告内容: 配置→实验设计→结果→分析→结论",
+        "公平对比: 确保相同的量化精度、batch配置、生成长度"
+      ],
+      "resources": [
+        {"name": "推理框架benchmark", "url": "https://github.com/vllm-project/vllm/tree/main/benchmarks"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-9-02", "front": "如何公平对比推理框架性能？", "back": "控制变量:\n1. 同一模型(如Llama-2-7B)\n2. 同一硬件(如A100 80GB)\n3. 同一精度(FP16/INT4)\n4. 同一输入(prompt长度+生成长度)\n测试:\n  离线: 固定N条请求的总时间\n  在线: 不同并发下的P50/P99延迟\n指标: throughput, latency, TTFT", "topic": "性能对比", "day": "Day 54", "source": "benchmark"}
+      ]
+    },
+    "4-10-1": {
+      "key_points": [
+        "Speculative Decoding实现: 需要draft model(小模型)和target model(大模型)",
+        "Draft阶段: 小模型连续生成K个token(K=4-8)，收集所有token和概率",
+        "Verify阶段: 大模型一次forward处理K+1个token，对比概率分布",
+        "接受/拒绝: 用modified rejection sampling保证输出分布不变"
+      ],
+      "resources": [
+        {"name": "Speculative Decoding论文", "url": "https://arxiv.org/abs/2302.01318"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-10-01", "front": "Speculative Decoding的接受率取决于什么？", "back": "接受率 = draft和target概率分布的接近程度\n因素:\n1. Draft模型质量(越大越准→接受率越高)\n2. 生成难度(确定性文本→接受率高)\n3. Temperature(低温→确定性高→接受率高)\n典型接受率: 60-90%\n加速比 ≈ K × 接受率 / (1 + draft开销)\n实际: 2-3倍加速", "topic": "Speculative Decoding", "day": "Day 55", "source": "Speculative Decoding论文"}
+      ]
+    },
+    "4-10-2": {
+      "key_points": [
+        "vLLM Speculative Decoding: 内置支持，--speculative-model draft_model_name",
+        "Medusa: 不用draft model，直接在target model上加多个prediction head",
+        "EAGLE: 自回归draft head，比Medusa更准确",
+        "选择: 有好的draft model→standard SD, 无→Medusa/EAGLE"
+      ],
+      "resources": [
+        {"name": "vLLM Speculative Decoding", "url": "https://docs.vllm.ai/en/latest/models/spec_decode.html"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-10-02", "front": "Speculative Decoding的三种变体？", "back": "Standard: target+draft两个独立模型\n  需要draft model，接受率高\nMedusa: target+多个head(无draft)\n  head并行预测多个位置\n  无需额外模型，但需要训练head\nEAGLE: target+自回归draft head\n  比Medusa更准(自回归)\n  速度更快(轻量head)\n选择: 有draft→Standard, 无→EAGLE", "topic": "Speculative Decoding", "day": "Day 55", "source": "vLLM文档"}
+      ]
+    },
+    "4-11-1": {
+      "key_points": [
+        "MLC-LLM: 机器学习编译优化，将模型编译为特定硬件的优化代码",
+        "TVM: Apache TVM是底层编译框架，MLC-LLM基于TVM构建",
+        "编译优化: 算子融合、内存优化、硬件特定代码生成",
+        "跨平台: 同一模型可编译到CUDA/Metal/Vulkan/WebGPU等"
+      ],
+      "resources": [
+        {"name": "MLC-LLM GitHub", "url": "https://github.com/mlc-ai/mlc-llm"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-11-01", "front": "MLC-LLM的编译优化原理？", "back": "输入: HuggingFace模型\n编译: TVM将计算图优化\n  1. 算子融合(减少kernel launch)\n  2. 内存优化(减少分配)\n  3. 硬件代码生成(CUDA/Metal等)\n输出: 优化后的可执行模型\n优势: 跨平台(iOS/Android/Web)\n  自动优化不需手写kernel\nvs TRT-LLM: 更通用，非NVIDIA专属", "topic": "编译优化", "day": "Day 56", "source": "MLC-LLM"}
+      ]
+    },
+    "4-11-2": {
+      "key_points": [
+        "MLC-LLM使用: pip install mlc-llm → mlc_llm compile model → mlc_llm serve",
+        "支持模型: LLaMA, Mistral, Phi, Qwen等主流模型",
+        "移动端部署: 编译后可在iOS/Android上运行LLM",
+        "WebGPU: 编译后可在浏览器中运行LLM(WebLLM)"
+      ],
+      "resources": [
+        {"name": "MLC-LLM文档", "url": "https://llm.mlc.ai/docs/"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-11-02", "front": "MLC-LLM支持哪些部署目标？", "back": "GPU: CUDA(NVIDIA), Metal(Apple), Vulkan\nCPU: x86(AVX), ARM(NEON)\n移动端: iOS(Metal), Android(OpenCL/Vulkan)\n浏览器: WebGPU(Chrome/Edge)\n编译: mlc_llm compile → 目标平台库\n特点: 一次开发，多端部署\n  自动优化每个平台的kernel", "topic": "编译优化", "day": "Day 56", "source": "MLC-LLM"}
+      ]
+    },
+    "4-12-1": {
+      "key_points": [
+        "FlashAttention-3: 针对Hopper架构(H100)的优化版本",
+        "Hopper特性: 异步warp组(warpgroup)、TMA(Tensor Memory Accelerator)、FP8 Tensor Core",
+        "异步流水线: GEMM和softmax可以overlap执行(warpgroup specialization)",
+        "FP8: H100支持FP8 Tensor Core，速度比FP16快2倍，精度损失极小"
+      ],
+      "resources": [
+        {"name": "FlashAttention-3论文", "url": "https://arxiv.org/abs/2407.08691"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-12-01", "front": "FlashAttention-3针对Hopper的优化？", "back": "1. 异步warpgroup: GEMM和softmax overlap\n  不同warpgroup执行不同操作\n2. TMA: 硬件加速tensor内存搬运\n  减少shared mem加载开销\n3. FP8 Tensor Core: 速度2倍于FP16\n4. 低精度accumulation优化\n结果: 比FA-2快1.5-2倍(H100)\n达理论FLOPS 75%+", "topic": "FlashAttention", "day": "Day 57", "source": "FlashAttention-3论文"}
+      ]
+    },
+    "4-12-2": {
+      "key_points": [
+        "FlashInfer: 高性能attention kernel库，vLLM/SGLang底层使用",
+        "特点: 支持多种attention变体(MHA/GQA/MQA)、PagedAttention、Prefix Caching",
+        "API: BatchPrefillWithPagedKVCache、BatchDecodeWithPagedKVCache",
+        "性能: 比FlashAttention-2的PagedAttention实现更快(专门为serving优化)"
+      ],
+      "resources": [
+        {"name": "FlashInfer GitHub", "url": "https://github.com/flashinfer-ai/flashinfer"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-12-02", "front": "FlashInfer和FlashAttention的区别？", "back": "FlashAttention: 通用attention加速\n  主要优化训练场景\n  连续KV Cache\nFlashInfer: serving专用\n  原生PagedAttention支持\n  BatchPrefill + BatchDecode分离\n  Prefix Caching优化\n  Cascade attention(多级cache)\n位置: vLLM/SGLang的底层kernel\n  替代FlashAttention用于serving", "topic": "Attention Kernel", "day": "Day 57", "source": "FlashInfer"}
+      ]
+    },
+    "4-13-1": {
+      "key_points": [
+        "第四层总结: 从llama2.c到llm.c到KuiperLLama，理解推理框架全栈",
+        "能力: 用C/C++实现Transformer前向、KV Cache、采样、量化",
+        "生产级框架: llama.cpp(边缘)、vLLM(服务)、TRT-LLM(极致性能)、MLC-LLM(跨平台)",
+        "面试亮点: KuiperLLama项目展示底层理解能力"
+      ],
+      "resources": [
+        {"name": "KuiperLLama", "url": "https://github.com/zjhellofss/KuiperLLama"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-13-01", "front": "推理框架层的核心能力？", "back": "底层: C/C++实现Transformer推理\n  Tensor/Buffer/Operator/Model/Runtime\n  KV Cache管理/采样/量化\n生产: 了解vLLM/TRT-LLM/llama.cpp\n  PagedAttention/ContinuousBatch\n  FlashAttention/量化部署\n优化: Speculative Decoding\n  Prefix Caching/CUDA Graph\n简历: KuiperLLama从零实现", "topic": "总结", "day": "Day 58", "source": "综合"}
+      ]
+    },
+    "4-13-2": {
+      "key_points": [
+        "简历项目包装: KuiperLLama实现+性能优化+benchmark报告",
+        "技术点: C++17、CMake、CUDA、内存管理、算子优化、量化",
+        "STAR格式: Situation(需要高效推理)→Task(实现C++框架)→Action(具体做了什么)→Result(性能数据)",
+        "面试准备: 能讲清楚每个算子的实现细节和优化决策"
+      ],
+      "resources": [
+        {"name": "KuiperLLama", "url": "https://github.com/zjhellofss/KuiperLLama"}
+      ],
+      "flashcards": [
+        {"id": "fc-4-13-02", "front": "推理框架项目怎么写进简历？", "back": "标题: 基于C++的LLM推理框架\n技术栈: C++17/CUDA/CMake\n亮点:\n1. 从零实现Transformer前向推理\n2. KV Cache管理+多轮对话支持\n3. CUDA kernel优化(RMSNorm/Attention)\n4. INT8量化支持\n数据: 7B模型推理速度xx tokens/s\n  比naive实现快xx倍", "topic": "简历", "day": "Day 58", "source": "综合"}
+      ]
+    }
+  }
+}

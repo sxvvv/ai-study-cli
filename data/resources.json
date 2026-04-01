@@ -1,0 +1,89 @@
+{
+  "resources": {
+    "phase_1": {
+      "name": "LLM从零理解",
+      "materials": [
+        {"title": "MiniMind: 从零训练64M参数GPT", "url": "https://github.com/jingyaogong/minimind", "type": "仓库", "lang": "zh", "priority": "必读", "note": "主线教材，Pretrain/SFT/LoRA/DPO/PPO/GRPO全流程"},
+        {"title": "MiniMind-Notes: 逐行中文注释版", "url": "https://github.com/MLNLP-World/minimind-notes", "type": "仓库", "lang": "zh", "priority": "必读", "note": "读源码的最佳伴侣"},
+        {"title": "MiniMind教学网站(模块化实验)", "url": "https://www.minimind.wiki/", "type": "教程", "lang": "zh", "priority": "必读", "note": "RMSNorm/RoPE/Attention每个实验5-10分钟CPU跑通"},
+        {"title": "MiniMind-V: 视觉多模态VLM", "url": "https://github.com/jingyaogong/minimind-v", "type": "仓库", "lang": "zh", "priority": "必读", "note": "理解CLIP+投影层+LLM的多模态架构"},
+        {"title": "Datawhale happy-llm: Transformer原理与实践", "url": "https://datawhalechina.github.io/happy-llm/", "type": "教程", "lang": "zh", "priority": "推荐", "note": "Transformer理论补课+PyTorch搭建LLM"},
+        {"title": "Datawhale diy-llm: LLM全栈课程", "url": "https://github.com/datawhalechina/diy-llm", "type": "课程", "lang": "zh", "priority": "推荐", "note": "贯穿全部阶段的Datawhale主线，含作业"},
+        {"title": "Datawhale unlock-deepseek", "url": "https://github.com/datawhalechina/unlock-deepseek", "type": "教程", "lang": "zh", "priority": "推荐", "note": "DeepSeek全系列论文解读+GRPO复现"},
+        {"title": "Attention Is All You Need 论文", "url": "https://arxiv.org/abs/1706.03762", "type": "论文", "lang": "en", "priority": "推荐", "note": "Transformer原始论文"},
+        {"title": "InstructGPT / RLHF论文", "url": "https://arxiv.org/abs/2203.02155", "type": "论文", "lang": "en", "priority": "推荐", "note": "PPO在LLM中的应用"},
+        {"title": "DeepSeek-R1技术报告", "url": "https://arxiv.org/abs/2501.12948", "type": "论文", "lang": "en", "priority": "推荐", "note": "GRPO算法详解"},
+        {"title": "DPO论文", "url": "https://arxiv.org/abs/2305.18290", "type": "论文", "lang": "en", "priority": "选读", "note": "绕过RM直接优化策略"}
+      ]
+    },
+    "phase_2": {
+      "name": "GPU编程 CUDA/Triton",
+      "materials": [
+        {"title": "GPU编程入门手册(Ji Zhuoran)", "url": "https://jizhuoran.github.io/intro2GPU/", "type": "指南", "lang": "zh", "priority": "必读", "note": "国内最好的GPU学习路径规划"},
+        {"title": "Triton官方Tutorials", "url": "https://triton-lang.org/main/getting-started/tutorials/", "type": "教程", "lang": "en", "priority": "必读", "note": "从Vector Add到Fused Attention共6个tutorial"},
+        {"title": "Triton-Puzzles (srush)", "url": "https://github.com/srush/Triton-Puzzles", "type": "练习", "lang": "en", "priority": "必读", "note": "13个渐进式Triton编程练习题"},
+        {"title": "LeetCUDA: 200+ CUDA/Triton Kernels", "url": "https://github.com/xlite-dev/LeetCUDA", "type": "仓库", "lang": "en", "priority": "必读", "note": "刷题式学CUDA，含Tensor Core/HGEMM/FA2"},
+        {"title": "CUDA-Learn-Notes", "url": "https://github.com/DefTruth/CUDA-Learn-Notes", "type": "仓库", "lang": "zh", "priority": "推荐", "note": "200+ kernel笔记，含MMA/CuTe实现"},
+        {"title": "Liger-Kernel (LinkedIn)", "url": "https://github.com/linkedin/Liger-Kernel", "type": "仓库", "lang": "en", "priority": "推荐", "note": "生产级Triton LLM训练kernel合集"},
+        {"title": "CSAPP第5-6章", "url": "https://csapp.cs.cmu.edu/", "type": "书籍", "lang": "en", "priority": "推荐", "note": "程序优化+存储器层次结构"},
+        {"title": "CUDA C++ Programming Guide", "url": "https://docs.nvidia.com/cuda/cuda-c-programming-guide/", "type": "文档", "lang": "en", "priority": "推荐", "note": "NVIDIA官方，重点第5章Memory Hierarchy"},
+        {"title": "CUDA Mode讲座(YouTube)", "url": "https://www.youtube.com/@CUDAMODE", "type": "视频", "lang": "en", "priority": "选读", "note": "GPU编程社区高质量讲座"},
+        {"title": "awesome-cuda-and-hpc", "url": "https://github.com/coderonion/awesome-cuda-and-hpc", "type": "合集", "lang": "zh", "priority": "选读", "note": "CUDA/HPC资源大全，当字典查"}
+      ]
+    },
+    "phase_3": {
+      "name": "推理引擎",
+      "materials": [
+        {"title": "nano-vllm: 1200行精简vLLM", "url": "https://github.com/GeeeekExplorer/nano-vllm", "type": "仓库", "lang": "en", "priority": "必读", "note": "首选入门！含PagedAttention/Continuous Batching/TP"},
+        {"title": "mini-vllm: 极简PagedAttention实现", "url": "https://github.com/ubermenchh/mini-vllm", "type": "仓库", "lang": "en", "priority": "必读", "note": "更精简的实现，快速理解核心"},
+        {"title": "MinivLLM: 含自实现CUDA Attention", "url": "https://github.com/Wenyueh/MinivLLM", "type": "仓库", "lang": "en", "priority": "必读", "note": "附HowToApproachvLLM.md入门指南"},
+        {"title": "vLLM V1源码解读博客", "url": "https://shijuzhao.github.io/vllm-v1", "type": "博客", "lang": "zh", "priority": "必读", "note": "V1重构后核心仅5000行，最佳读源码时机"},
+        {"title": "vLLM官方仓库", "url": "https://github.com/vllm-project/vllm", "type": "仓库", "lang": "en", "priority": "必读", "note": "生产级代码，建议先读mini版再来"},
+        {"title": "vLLM中文文档", "url": "https://github.com/hyperai/vllm-cn", "type": "文档", "lang": "zh", "priority": "推荐", "note": "官方文档中文翻译"},
+        {"title": "PagedAttention论文(SOSP'23)", "url": "https://arxiv.org/abs/2309.06180", "type": "论文", "lang": "en", "priority": "必读", "note": "vLLM核心创新"},
+        {"title": "FlashAttention-2论文", "url": "https://arxiv.org/abs/2307.08691", "type": "论文", "lang": "en", "priority": "必读", "note": "IO-aware attention，理解tiling"},
+        {"title": "SGLang论文", "url": "https://arxiv.org/abs/2312.07104", "type": "论文", "lang": "en", "priority": "推荐", "note": "RadixAttention，与vLLM对比学习"},
+        {"title": "AWQ量化论文", "url": "https://arxiv.org/abs/2306.00978", "type": "论文", "lang": "en", "priority": "推荐", "note": "Activation-aware Weight Quantization"},
+        {"title": "nano-vllm深度教程(Substack)", "url": "https://boringbot.substack.com/p/nano-vllm-a-tiny-inference-engine", "type": "博客", "lang": "en", "priority": "推荐", "note": "nano-vllm的详细导读"},
+        {"title": "flex-nano-vllm: FlexAttention实现", "url": "https://github.com/changjonathanc/flex-nano-vllm", "type": "仓库", "lang": "en", "priority": "选读", "note": "无triton依赖的极简实现"},
+        {"title": "CSAPP第9章: 虚拟内存", "url": "https://csapp.cs.cmu.edu/", "type": "书籍", "lang": "en", "priority": "推荐", "note": "PagedAttention的OS理论基础"}
+      ]
+    },
+    "phase_4": {
+      "name": "自制推理框架",
+      "materials": [
+        {"title": "KuiperLLama: 动手自制大模型推理框架", "url": "https://github.com/zjhellofss/KuiperLLama", "type": "仓库", "lang": "zh", "priority": "必读", "note": "C++推理框架，支持Llama2/3和Qwen2.5，校招好项目"},
+        {"title": "llama2.c (Karpathy)", "url": "https://github.com/karpathy/llama2.c", "type": "仓库", "lang": "en", "priority": "必读", "note": "700行纯C的Llama2推理"},
+        {"title": "llm.c (Karpathy)", "url": "https://github.com/karpathy/llm.c", "type": "仓库", "lang": "en", "priority": "必读", "note": "纯C/CUDA训练GPT-2"},
+        {"title": "llama.cpp", "url": "https://github.com/ggerganov/llama.cpp", "type": "仓库", "lang": "en", "priority": "推荐", "note": "量化推理引擎，学习GGUF格式"},
+        {"title": "TensorRT-LLM文档", "url": "https://nvidia.github.io/TensorRT-LLM/", "type": "文档", "lang": "en", "priority": "推荐", "note": "NVIDIA官方推理引擎"},
+        {"title": "MLC-LLM", "url": "https://github.com/mlc-ai/mlc-llm", "type": "仓库", "lang": "en", "priority": "选读", "note": "编译优化方案，跨硬件推理"},
+        {"title": "FlashAttention-3(Hopper)", "url": "https://arxiv.org/abs/2407.08691", "type": "论文", "lang": "en", "priority": "选读", "note": "H100异步执行+FP8优化"}
+      ]
+    },
+    "phase_5": {
+      "name": "RL训练基建",
+      "materials": [
+        {"title": "veRL官方文档", "url": "https://verl.readthedocs.io/en/latest/", "type": "文档", "lang": "en", "priority": "必读", "note": "字节RL训练框架，先读Architecture Overview"},
+        {"title": "veRL GitHub", "url": "https://github.com/volcengine/verl", "type": "仓库", "lang": "en", "priority": "必读", "note": "跑通GSM8K PPO example"},
+        {"title": "OpenRLHF", "url": "https://github.com/OpenRLHF/OpenRLHF", "type": "仓库", "lang": "en", "priority": "必读", "note": "另一个RLHF框架，对比架构"},
+        {"title": "trl (HuggingFace)", "url": "https://github.com/huggingface/trl", "type": "仓库", "lang": "en", "priority": "必读", "note": "最易上手的RLHF库"},
+        {"title": "Datawhale unlock-deepseek: RL+Infra", "url": "https://github.com/datawhalechina/unlock-deepseek", "type": "教程", "lang": "zh", "priority": "推荐", "note": "DeepSeek训练Infra技术拆解"},
+        {"title": "Datawhale diy-llm: 对齐章节", "url": "https://github.com/datawhalechina/diy-llm", "type": "课程", "lang": "zh", "priority": "推荐", "note": "中文系统讲解SFT/RLHF/GRPO"},
+        {"title": "Datawhale self-llm: 微调指南", "url": "https://github.com/datawhalechina/self-llm", "type": "教程", "lang": "zh", "priority": "推荐", "note": "开源模型部署+LoRA微调实操"}
+      ]
+    },
+    "phase_6": {
+      "name": "国产GPU适配",
+      "materials": [
+        {"title": "华为昇腾CANN开发文档", "url": "https://www.hiascend.com/document", "type": "文档", "lang": "zh", "priority": "必读", "note": "AscendCL+算子开发指南"},
+        {"title": "海光DCU/ROCm开发", "url": "https://developer.hygon.com/", "type": "文档", "lang": "zh", "priority": "推荐", "note": "HIP编程，和CUDA 90%相似"},
+        {"title": "MindSpore框架文档", "url": "https://www.mindspore.cn/docs/zh-CN/master/index.html", "type": "文档", "lang": "zh", "priority": "推荐", "note": "华为生态主力框架"},
+        {"title": "MLC-LLM跨硬件适配", "url": "https://github.com/mlc-ai/mlc-llm", "type": "仓库", "lang": "en", "priority": "推荐", "note": "学习多后端抽象层设计"},
+        {"title": "vLLM硬件plugin代码", "url": "https://github.com/vllm-project/vllm", "type": "源码", "lang": "en", "priority": "推荐", "note": "看vLLM如何支持Ascend/Gaudi等"},
+        {"title": "Datawhale self-llm: SGLang部署", "url": "https://github.com/datawhalechina/self-llm", "type": "教程", "lang": "zh", "priority": "选读", "note": "多框架部署参考"},
+        {"title": "寒武纪开发者中心", "url": "https://developer.cambricon.com/", "type": "文档", "lang": "zh", "priority": "选读", "note": "BANG编程指南"}
+      ]
+    }
+  }
+}

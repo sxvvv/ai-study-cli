@@ -1,0 +1,46 @@
+{
+  "quizzes": [
+    {"id": "q-1-01", "after_day": 3, "question": "RMSNorm相比LayerNorm的优势是什么？为什么现代LLM普遍采用RMSNorm？", "hint": "从计算量和训练稳定性两方面思考", "tags": ["transformer", "normalization"]},
+    {"id": "q-1-02", "after_day": 3, "question": "RoPE位置编码相比绝对位置编码的核心优势？它如何支持长度外推？", "hint": "想想旋转矩阵对相对位置的编码方式", "tags": ["transformer", "position-encoding"]},
+    {"id": "q-1-03", "after_day": 5, "question": "Pretrain和SFT在数据格式、loss计算上有什么关键区别？", "hint": "SFT中哪些token参与loss计算？", "tags": ["training", "sft"]},
+    {"id": "q-1-04", "after_day": 5, "question": "OS虚拟内存中的页表(Page Table)起什么作用？和PagedAttention有什么类比关系？", "hint": "虚拟地址→物理地址 vs 逻辑block→物理block", "tags": ["os", "paged-attention"]},
+    {"id": "q-1-05", "after_day": 7, "question": "GQA(Grouped Query Attention)相比MHA和MQA的优劣权衡是什么？", "hint": "KV head数量对推理速度和模型质量的影响", "tags": ["transformer", "attention"]},
+    {"id": "q-1-06", "after_day": 9, "question": "DPO相比PPO的核心优势是什么？它省掉了哪个组件？", "hint": "DPO的loss函数直接从什么推导而来？", "tags": ["alignment", "dpo"]},
+    {"id": "q-1-07", "after_day": 12, "question": "GRPO相比PPO省掉了什么？它如何估计advantage？", "hint": "GRPO对同一prompt采样多个response", "tags": ["alignment", "grpo"]},
+    {"id": "q-1-08", "after_day": 12, "question": "PPO中的clip机制起什么作用？如果去掉clip会怎样？", "hint": "想想策略更新过大会导致什么问题", "tags": ["alignment", "ppo"]},
+    {"id": "q-1-09", "after_day": 14, "question": "VLM中视觉encoder的输出如何与LLM的文本embedding对齐？", "hint": "投影层做了什么维度变换？", "tags": ["vlm", "multimodal"]},
+    {"id": "q-1-10", "after_day": 14, "question": "MoE架构中的负载均衡loss为什么重要？不加会怎样？", "hint": "想想expert坍塌(collapse)问题", "tags": ["architecture", "moe"]},
+
+    {"id": "q-2-01", "after_day": 17, "question": "GPU中shared memory和global memory的访问延迟差多少个数量级？为什么要用tiling？", "hint": "~100x差距；tiling利用数据局部性", "tags": ["cuda", "memory"]},
+    {"id": "q-2-02", "after_day": 17, "question": "什么是warp divergence？它为什么会降低GPU性能？", "hint": "同一warp的32个线程必须执行相同指令", "tags": ["cuda", "warp"]},
+    {"id": "q-2-03", "after_day": 18, "question": "naive矩阵乘法的主要瓶颈是什么？tiling如何解决？", "hint": "计算量O(N³) vs 内存访问O(N²)×重复读取", "tags": ["cuda", "gemm"]},
+    {"id": "q-2-04", "after_day": 20, "question": "什么是Arithmetic Intensity？如何判断一个kernel是compute-bound还是memory-bound？", "hint": "Roofline Model: FLOPs/Bytes", "tags": ["performance", "roofline"]},
+    {"id": "q-2-05", "after_day": 22, "question": "Triton相比CUDA的编程模型有什么核心区别？", "hint": "Triton是block-level编程，自动处理线程调度", "tags": ["triton", "programming-model"]},
+    {"id": "q-2-06", "after_day": 24, "question": "Kernel fusion为什么能提升性能？举一个具体例子。", "hint": "减少global memory读写次数", "tags": ["optimization", "fusion"]},
+    {"id": "q-2-07", "after_day": 27, "question": "FlashAttention通过什么技术避免了O(N²)的显存占用？", "hint": "tiling + online softmax + recomputation", "tags": ["flash-attention", "optimization"]},
+
+    {"id": "q-3-01", "after_day": 29, "question": "Continuous Batching和Static Batching的核心区别？为什么前者吞吐更高？", "hint": "iteration-level vs request-level调度", "tags": ["serving", "batching"]},
+    {"id": "q-3-02", "after_day": 30, "question": "PagedAttention解决了KV cache管理的什么问题？核心思路是什么？", "hint": "内存碎片+浪费；类比OS分页", "tags": ["vllm", "paged-attention"]},
+    {"id": "q-3-03", "after_day": 31, "question": "vLLM的scheduler如何决定哪些请求进入running状态？", "hint": "优先级、显存预算、抢占策略", "tags": ["vllm", "scheduler"]},
+    {"id": "q-3-04", "after_day": 32, "question": "vLLM中的block_manager如何处理block的分配和释放？和OS的buddy system有什么类似？", "hint": "引用计数、Copy-on-Write", "tags": ["vllm", "memory-management"]},
+    {"id": "q-3-05", "after_day": 35, "question": "vLLM V1相比V0的架构有什么核心简化？", "hint": "processor→engine_core→output_processor三段式", "tags": ["vllm", "architecture"]},
+    {"id": "q-3-06", "after_day": 38, "question": "Prefix Caching如何减少重复计算？适合什么场景？", "hint": "相同system prompt的多个请求", "tags": ["vllm", "prefix-caching"]},
+    {"id": "q-3-07", "after_day": 42, "question": "FlashAttention的forward pass中online softmax算法是如何工作的？", "hint": "维护running max和running sum，逐block更新", "tags": ["flash-attention", "algorithm"]},
+    {"id": "q-3-08", "after_day": 44, "question": "INT8量化和FP8量化的精度-速度权衡如何？什么场景下用哪个？", "hint": "FP8保留指数位，对outlier更友好", "tags": ["quantization", "inference"]},
+    {"id": "q-3-09", "after_day": 42, "question": "Speculative Decoding的draft-verify范式如何保证输出质量？", "hint": "verify阶段使用大模型做acceptance sampling", "tags": ["inference", "speculative"]},
+
+    {"id": "q-4-01", "after_day": 47, "question": "llm.c中的GPT-2训练和PyTorch训练在底层有什么本质区别？", "hint": "手动管理内存、手写backward、无autograd", "tags": ["training", "low-level"]},
+    {"id": "q-4-02", "after_day": 50, "question": "C++推理框架中KV cache管理和Python版本有什么不同挑战？", "hint": "手动内存管理、RAII、避免内存泄漏", "tags": ["inference", "cpp"]},
+    {"id": "q-4-03", "after_day": 52, "question": "GGUF格式相比直接加载PyTorch权重的优势是什么？", "hint": "统一格式、支持量化、metadata自描述", "tags": ["inference", "format"]},
+    {"id": "q-4-04", "after_day": 54, "question": "CUDA Graph为什么能加速LLM推理？它有什么限制？", "hint": "减少kernel launch开销；输入shape必须固定", "tags": ["inference", "optimization"]},
+
+    {"id": "q-5-01", "after_day": 62, "question": "veRL的Actor-Critic分离架构有什么优势？为什么不放在同一个GPU上？", "hint": "显存、计算资源、更新频率不同", "tags": ["rl", "architecture"]},
+    {"id": "q-5-02", "after_day": 64, "question": "RL训练中Rollout阶段使用vLLM推理有什么好处？", "hint": "高吞吐、batching、PagedAttention节省显存", "tags": ["rl", "rollout"]},
+    {"id": "q-5-03", "after_day": 67, "question": "veRL和OpenRLHF在架构设计上最大的区别是什么？", "hint": "编排方式、数据传输策略", "tags": ["rl", "framework"]},
+    {"id": "q-5-04", "after_day": 70, "question": "DeepSpeed ZeRO Stage 1/2/3分别切分了什么？RL训练中通常用哪个Stage？", "hint": "1=optimizer states, 2=+gradients, 3=+parameters", "tags": ["distributed", "deepspeed"]},
+
+    {"id": "q-6-01", "after_day": 74, "question": "华为昇腾的达芬奇架构和NVIDIA GPU架构的核心区别是什么？", "hint": "Cube Unit vs Tensor Core，控制流差异", "tags": ["hardware", "ascend"]},
+    {"id": "q-6-02", "after_day": 76, "question": "CUDA代码迁移到HIP(海光DCU)时最常见的兼容性问题有哪些？", "hint": "hipify工具的局限、warp size差异", "tags": ["hardware", "hip"]},
+    {"id": "q-6-03", "after_day": 80, "question": "把一个CUDA kernel适配到国产GPU时，通常需要修改哪些层面？", "hint": "编程API、内存模型、算子库、编译工具链", "tags": ["hardware", "adaptation"]}
+  ]
+}

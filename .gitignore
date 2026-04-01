@@ -1,0 +1,19 @@
+# 个人数据（不要上传到公开仓库）
+data/progress.json
+data/config.json
+data/custom.json
+data/daily_feed_*.json
+data/flashcard_progress.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

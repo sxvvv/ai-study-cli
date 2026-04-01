@@ -1,0 +1,402 @@
+{
+  "phase_id": 5,
+  "enrichments": {
+    "5-1-1": {
+      "key_points": [
+        "RLHF全流程: SFT(基础能力) → RM(学习偏好) → PPO(策略优化)，三阶段串联",
+        "SFT: 用高质量指令数据微调base model，建立指令跟随能力",
+        "RM: 用偏好对(chosen/rejected)训练奖励模型，学会评估回答质量",
+        "PPO: 用RM的奖励信号优化策略，加KL约束防止偏离SFT模型"
+      ],
+      "resources": [
+        {"name": "InstructGPT论文", "url": "https://arxiv.org/abs/2203.02155"},
+        {"name": "RLHF综述", "url": "https://arxiv.org/abs/2307.15217"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-1-01", "front": "RLHF三阶段各自的输入输出？", "back": "SFT:\n  输入: base model + 指令数据\n  输出: SFT model(能回答问题)\nRM:\n  输入: SFT model + 偏好对\n  输出: Reward Model(打分0-1)\nPPO:\n  输入: SFT model + RM\n  输出: 对齐后的模型\n  目标: max E[RM(x,y)] - β·KL", "topic": "RLHF", "day": "Day 59", "source": "InstructGPT"}
+      ]
+    },
+    "5-1-2": {
+      "key_points": [
+        "trl(Transformer RL): HuggingFace的RL训练库，封装了SFT/DPO/PPO训练器",
+        "SFTTrainer: 基于Transformers Trainer，自动处理chat template和loss mask",
+        "使用: SFTTrainer(model, train_dataset, args=TrainingArguments(...))",
+        "数据格式: dataset需要有'text'或'messages'列(对话格式)"
+      ],
+      "resources": [
+        {"name": "trl GitHub", "url": "https://github.com/huggingface/trl"},
+        {"name": "trl SFT文档", "url": "https://huggingface.co/docs/trl/sft_trainer"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-1-02", "front": "trl SFTTrainer的基本用法？", "back": "from trl import SFTTrainer\ntrainer = SFTTrainer(\n  model=model,\n  train_dataset=dataset,  # 'messages'列\n  args=TrainingArguments(\n    output_dir='./sft',\n    per_device_train_batch_size=4,\n    learning_rate=2e-5,\n  ),\n)\ntrainer.train()\n自动处理: chat template, loss mask", "topic": "trl", "day": "Day 59", "source": "trl文档"}
+      ]
+    },
+    "5-2-1": {
+      "key_points": [
+        "DPOTrainer: 直接偏好优化，无需RM，直接从偏好数据训练",
+        "数据格式: 每条样本需要prompt + chosen + rejected三个字段",
+        "参数: beta(KL系数,默认0.1), loss_type('sigmoid'/'hinge'/'ipo')",
+        "使用: DPOTrainer(model, ref_model, train_dataset, args=...)"
+      ],
+      "resources": [
+        {"name": "trl DPO文档", "url": "https://huggingface.co/docs/trl/dpo_trainer"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-2-01", "front": "trl DPOTrainer和PPOTrainer的区别？", "back": "DPOTrainer:\n  输入: model + ref_model + 偏好数据\n  无需RM，直接优化\n  简单稳定，超参少(beta)\nPPOTrainer:\n  输入: model + RM + prompt数据\n  需要在线生成+RM打分\n  更灵活但不稳定\n选择: 有偏好数据→DPO\n  需要在线优化→PPO", "topic": "trl", "day": "Day 60", "source": "trl文档"}
+      ]
+    },
+    "5-2-2": {
+      "key_points": [
+        "PPOTrainer: 需要在线生成回答并用RM打分，训练流程最复杂",
+        "流程: sample prompts → generate responses → RM score → compute advantages → PPO update",
+        "四个模型: actor(训练), critic(训练), ref(冻结), reward(冻结)",
+        "配置: PPOConfig(batch_size, mini_batch_size, ppo_epochs, learning_rate)"
+      ],
+      "resources": [
+        {"name": "trl PPO文档", "url": "https://huggingface.co/docs/trl/ppo_trainer"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-2-02", "front": "trl PPOTrainer的训练循环？", "back": "for batch in dataloader:\n  # 1. 生成回答\n  responses = model.generate(batch['prompt'])\n  # 2. RM打分\n  rewards = rm(batch['prompt'], responses)\n  # 3. PPO更新\n  stats = ppo_trainer.step(\n    batch['input_ids'],\n    responses,\n    rewards\n  )\n  # 内部: 计算advantages→clipped update\n四模型: actor+critic+ref+reward", "topic": "trl PPO", "day": "Day 60", "source": "trl文档"}
+      ]
+    },
+    "5-3-1": {
+      "key_points": [
+        "veRL: 字节跳动开源的RL训练框架，专为大规模LLM RLHF设计",
+        "特点: Ray分布式、Actor-Learner分离、高效rollout、支持PPO/GRPO/ReMax",
+        "架构: Trainer(算法) → Workers(分布式) → Rollout(生成) → Reward(打分)",
+        "vs trl: veRL支持更大规模(多节点)、更高效的资源利用"
+      ],
+      "resources": [
+        {"name": "veRL GitHub", "url": "https://github.com/volcengine/verl"},
+        {"name": "veRL论文", "url": "https://arxiv.org/abs/2409.19256"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-3-01", "front": "veRL和trl的主要区别？", "back": "veRL:\n  大规模分布式(Ray)\n  Actor-Learner分离(GPU利用高)\n  高效rollout(vLLM后端)\n  字节内部验证\ntrl:\n  单机为主(简单)\n  HuggingFace生态集成\n  学习友好\n选择: 研究/小规模→trl\n  生产/大规模→veRL/OpenRLHF", "topic": "RL训练框架", "day": "Day 61", "source": "veRL论文"}
+      ]
+    },
+    "5-3-2": {
+      "key_points": [
+        "veRL安装: pip install verl[all]，依赖Ray, vLLM, DeepSpeed",
+        "配置: YAML配置文件定义模型、算法、分布式策略",
+        "快速开始: verl run ppo --config examples/ppo_gsm8k.yaml",
+        "日志: 集成wandb/tensorboard，监控reward/KL/loss等指标"
+      ],
+      "resources": [
+        {"name": "veRL快速开始", "url": "https://github.com/volcengine/verl#quick-start"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-3-02", "front": "veRL的部署架构？", "back": "基于Ray分布式:\n  Ray Driver: 协调全局训练\n  Actor Workers: 模型参数+推理\n  Learner Workers: 梯度计算+更新\n  Rollout Workers: vLLM生成\n  Reward Workers: RM打分\n通信: NCCL(GPU间) + Ray(进程间)\n配置: YAML定义分布式策略\n扩展: 单机→多机无缝扩展", "topic": "veRL", "day": "Day 61", "source": "veRL"}
+      ]
+    },
+    "5-4-1": {
+      "key_points": [
+        "GSM8K: 小学数学推理数据集，8.5K训练+1.3K测试，常用于RL训练验证",
+        "PPO训练: 用GSM8K训练LLM的数学推理能力，RM基于答案正确性",
+        "Reward设计: 答案正确+1，错误-1，格式正确+0.5(鼓励结构化推理)",
+        "评估: GSM8K准确率从SFT的~30%提升到PPO后的~50%+(小模型)"
+      ],
+      "resources": [
+        {"name": "veRL GSM8K示例", "url": "https://github.com/volcengine/verl/tree/main/examples/ppo_trainer"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-4-01", "front": "为什么用GSM8K做RL训练验证？", "back": "优点:\n1. 答案可自动验证(数值对比)\n2. 数据集小(8.5K)训练快\n3. 推理链清晰(一步步计算)\n4. RL信号明确(对/错)\nReward: 正确+1, 错误-1\n  格式正确+0.5\n基线: SFT~30% → PPO~50%+\n广泛用于验证RLHF pipeline", "topic": "RL训练", "day": "Day 62", "source": "veRL GSM8K"}
+      ]
+    },
+    "5-4-2": {
+      "key_points": [
+        "Actor-Critic分离: Actor(策略)和Critic(价值)可以在不同GPU上",
+        "好处: Actor参数和Critic参数不需要放在同一张GPU上，节省显存",
+        "Rollout分离: 生成(rollout)和训练(learning)用不同的模型副本",
+        "双缓冲: 一份模型做rollout，另一份做training，overlap减少等待"
+      ],
+      "resources": [
+        {"name": "veRL架构", "url": "https://github.com/volcengine/verl"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-4-02", "front": "RL训练中Actor-Critic分离的好处？", "back": "传统: Actor+Critic在同一GPU\n  显存: 2倍模型大小\n分离: Actor和Critic在不同GPU\n  每张GPU只需1倍模型大小\nRollout分离: 生成和训练用不同副本\n  生成时不需要梯度(省显存)\n  训练时不需要生成(专注计算)\n双缓冲: overlap生成和训练\n  GPU利用率接近100%", "topic": "分布式RL", "day": "Day 62", "source": "veRL"}
+      ]
+    },
+    "5-5-1": {
+      "key_points": [
+        "veRL Worker: 基于Ray Actor实现，每个Worker管理一组GPU",
+        "ActorWorker: 持有Actor模型参数，负责forward/backward/update",
+        "CriticWorker: 持有Critic模型参数，估计state value",
+        "Worker通信: 参数同步用NCCL AllReduce，数据传输用Ray ObjectStore"
+      ],
+      "resources": [
+        {"name": "veRL Worker源码", "url": "https://github.com/volcengine/verl"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-5-01", "front": "veRL的Worker架构设计？", "back": "基于Ray Actor:\nActorWorker: Actor模型+forward/backward\nCriticWorker: Critic模型+value估计\nRolloutWorker: vLLM推理引擎+生成\nRewardWorker: RM模型+打分\n通信:\n  GPU间: NCCL AllReduce(快)\n  Worker间: Ray ObjectStore\n扩展: 增加Worker数=增加GPU利用", "topic": "veRL", "day": "Day 63", "source": "veRL Worker"}
+      ]
+    },
+    "5-5-2": {
+      "key_points": [
+        "Rollout模块: 使用vLLM作为推理后端，高效生成回答",
+        "好处: vLLM的PagedAttention+ContinuousBatching让rollout更快",
+        "参数同步: 每次PPO update后需要将最新参数同步到rollout的vLLM模型",
+        "Rollout策略: temperature采样、top-p截断、多次采样取最好(best-of-N)"
+      ],
+      "resources": [
+        {"name": "veRL Rollout", "url": "https://github.com/volcengine/verl"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-5-02", "front": "RL训练中Rollout的效率为什么重要？", "back": "PPO训练循环:\n  rollout(生成)→reward(打分)→update(训练)\n  rollout占总时间50-70%\n  是性能瓶颈!\n优化: 用vLLM做rollout\n  PagedAttention减少显存浪费\n  ContinuousBatching提高吞吐\n  比纯HF generate快3-10倍\n效果: 总训练时间减少40-60%", "topic": "RL训练", "day": "Day 63", "source": "veRL Rollout"}
+      ]
+    },
+    "5-6-1": {
+      "key_points": [
+        "veRL Trainer: 封装PPO/GRPO/ReMax等算法，管理训练循环",
+        "PPO实现: 计算advantage(GAE)→clipped policy loss→value loss→entropy bonus",
+        "关键超参: clip_range=0.2, value_clip=0.2, gae_lambda=0.95, gamma=1.0",
+        "训练技巧: gradient accumulation、混合精度(bf16)、gradient checkpointing"
+      ],
+      "resources": [
+        {"name": "veRL Trainer", "url": "https://github.com/volcengine/verl"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-6-01", "front": "PPO训练的关键超参数？", "back": "clip_range=0.2: 策略更新裁剪范围\nvalue_clip=0.2: value函数裁剪\ngae_lambda=0.95: GAE的λ参数\n  0→MC估计, 1→TD估计\ngamma=1.0: 折扣因子(LLM通常=1)\nkl_coeff=0.02: KL惩罚系数\nppo_epochs=4: 每batch更新次数\nmini_batch_size: 内部mini-batch大小", "topic": "PPO超参", "day": "Day 64", "source": "veRL Trainer"}
+      ]
+    },
+    "5-6-2": {
+      "key_points": [
+        "RL训练数据流: prompt pool → batch sample → rollout → reward → training",
+        "Prompt Pool: 大量无标注的prompt(问题/任务)，不需要人工标注回答",
+        "Batch采样: 每步从pool中采样一个batch的prompts",
+        "数据效率: RL的数据利用率比SFT低(一个prompt只用一次)，需要更多prompt"
+      ],
+      "resources": [
+        {"name": "veRL数据处理", "url": "https://github.com/volcengine/verl"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-6-02", "front": "RL训练和SFT的数据需求区别？", "back": "SFT: 需要(prompt, response)对\n  高质量标注数据(贵)\n  数据可重复使用(多epoch)\nRL: 只需prompt(无需标注回答)\n  模型自己生成→RM评估\n  通常只用一次(on-policy)\n  需要更多prompt(数万-数十万)\nRL数据成本: 标注更低\n  但compute成本更高(在线生成)", "topic": "RL数据", "day": "Day 64", "source": "veRL"}
+      ]
+    },
+    "5-7-1": {
+      "key_points": [
+        "veRL GRPO训练: 不需要Critic，用组内相对奖励代替",
+        "实现: 每个prompt采样K=8个回答，归一化奖励后直接计算policy gradient",
+        "优势: 少一个Critic模型→GPU显存减半→可以用更大的模型或更大的batch",
+        "配置: 修改veRL配置文件，algorithm=grpo, group_size=8"
+      ],
+      "resources": [
+        {"name": "veRL GRPO", "url": "https://github.com/volcengine/verl"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-7-01", "front": "GRPO比PPO省多少资源？", "back": "PPO: Actor+Critic+Ref+RM = 4个模型\n  显存: 约4倍模型大小\nGRPO: Actor+Ref+RM = 3个模型\n  省掉Critic(和Actor一样大)\n  显存: 约3倍模型大小\n额外: GRPO需要每prompt采样K=8次\n  rollout计算量增加8倍\n  但总体仍比PPO快(省Critic训练)", "topic": "GRPO", "day": "Day 65", "source": "veRL GRPO"}
+      ]
+    },
+    "5-7-2": {
+      "key_points": [
+        "DeepSeek-R1: 展示了纯RL(不经过SFT)也能涌现推理能力",
+        "GRPO训练: 从base model直接用GRPO训练，reward基于答案正确性",
+        "涌现: 训练过程中自发出现Chain-of-Thought推理(长思维链)",
+        "启示: RL的优化压力可以让模型学会结构化推理，不一定需要人工标注的CoT数据"
+      ],
+      "resources": [
+        {"name": "DeepSeek-R1论文", "url": "https://arxiv.org/abs/2401.02954"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-7-02", "front": "DeepSeek-R1的关键发现？", "back": "发现: 纯RL(无SFT)能涌现CoT推理\n方法: base model + GRPO\n  reward=答案正确性\n  不提供CoT标注数据\n涌现: 训练中自发出现:\n  '让我一步步思考...'\n  长推理链(>100 tokens)\n意义: RL优化压力足够时\n  模型自己学会结构化推理\n  不需要人工标注的推理过程", "topic": "DeepSeek-R1", "day": "Day 65", "source": "DeepSeek-R1论文"}
+      ]
+    },
+    "5-8-1": {
+      "key_points": [
+        "OpenRLHF: 另一个开源RL训练框架，支持PPO/DPO/GRPO等",
+        "架构: 基于Ray + DeepSpeed/vLLM，模块化设计",
+        "项目结构: openrlhf/trainer/(算法), openrlhf/models/(模型), examples/(示例)",
+        "vs veRL: OpenRLHF社区更活跃，文档更完善"
+      ],
+      "resources": [
+        {"name": "OpenRLHF GitHub", "url": "https://github.com/OpenRLHF/OpenRLHF"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-8-01", "front": "OpenRLHF的模块化设计？", "back": "openrlhf/\n  trainer/: PPO/DPO/GRPO训练器\n  models/: Actor/Critic/RM模型封装\n  datasets/: 数据处理\n  utils/: DeepSpeed/logging工具\nexamples/:\n  train_ppo.py: PPO训练示例\n  train_dpo.py: DPO训练示例\n依赖: Ray(分布式)+DeepSpeed(训练)\n  +vLLM(rollout)", "topic": "OpenRLHF", "day": "Day 66", "source": "OpenRLHF"}
+      ]
+    },
+    "5-8-2": {
+      "key_points": [
+        "OpenRLHF PPO示例: 跑通一个简单的PPO训练example",
+        "步骤: 准备SFT模型→准备RM→配置PPO参数→启动训练",
+        "监控: wandb记录reward曲线、KL散度、policy loss、value loss",
+        "调试: reward不增长时检查RM质量、KL系数、学习率"
+      ],
+      "resources": [
+        {"name": "OpenRLHF PPO示例", "url": "https://github.com/OpenRLHF/OpenRLHF/tree/main/examples"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-8-02", "front": "PPO训练不收敛时怎么调试？", "back": "检查清单:\n1. RM质量: 人工看几个(chosen,rejected)\n  RM分数是否合理？\n2. KL太大: 降低lr/增大kl_coeff\n  模型偏离ref太远\n3. KL太小: 提高lr/减小kl_coeff\n  模型几乎没学\n4. Reward hacking: reward高但输出质量差\n  RM被exploit了→改进RM\n5. 学习率: RL的lr通常比SFT小10倍", "topic": "RL调试", "day": "Day 66", "source": "OpenRLHF"}
+      ]
+    },
+    "5-9-1": {
+      "key_points": [
+        "veRL vs OpenRLHF: 两个框架的设计理念和实现差异",
+        "veRL: 字节内部孵化，Actor-Learner分离架构，GPU利用率高",
+        "OpenRLHF: 社区驱动，模块化设计，文档友好，易于二次开发",
+        "共同点: 都基于Ray分布式，都支持PPO/GRPO，都集成vLLM"
+      ],
+      "resources": [
+        {"name": "veRL", "url": "https://github.com/volcengine/verl"},
+        {"name": "OpenRLHF", "url": "https://github.com/OpenRLHF/OpenRLHF"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-9-01", "front": "veRL和OpenRLHF怎么选？", "back": "veRL:\n  Actor-Learner分离(GPU利用高)\n  字节验证(大规模稳定)\n  适合生产部署\nOpenRLHF:\n  模块化(易于修改)\n  社区活跃(更多模型支持)\n  文档友好(适合学习)\n共同: Ray+vLLM+PPO/GRPO\n建议: 学习→OpenRLHF\n  生产→veRL", "topic": "RL框架对比", "day": "Day 67", "source": "综合对比"}
+      ]
+    },
+    "5-9-2": {
+      "key_points": [
+        "分布式RL通用模式: Rollout-Reward-Training三阶段流水线",
+        "数据并行: 多个Worker同时rollout，结果汇总后统一训练",
+        "模型并行: 大模型跨GPU(TP/PP)，每个Worker管理一组GPU",
+        "混合并行: 数据并行(多Worker) × 模型并行(每Worker多GPU)"
+      ],
+      "resources": [
+        {"name": "分布式RL训练", "url": "https://arxiv.org/abs/2409.19256"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-9-02", "front": "分布式RL训练的并行策略？", "back": "三个维度:\n1. 数据并行: N个Worker各rollout一部分\n  汇总后统一计算advantage\n2. 模型并行: 大模型跨GPU\n  TP(tensor)在每个Worker内\n  PP(pipeline)跨Worker\n3. 流水线: rollout和training overlap\n  一组GPU做rollout时\n  另一组做training\n规模: 数据并行=Worker数×模型并行=GPU/Worker", "topic": "分布式RL", "day": "Day 67", "source": "veRL论文"}
+      ]
+    },
+    "5-10-1": {
+      "key_points": [
+        "Reward Model训练: 本质是一个二分类/排序模型，输入(prompt,response)→标量奖励",
+        "数据: 人工标注偏好对(chosen, rejected)，标注者选择更好的回答",
+        "Loss: Bradley-Terry model, L = -log(σ(r(chosen) - r(rejected)))",
+        "架构: 通常用同规模的LLM去掉LM Head加一个标量输出头"
+      ],
+      "resources": [
+        {"name": "InstructGPT RM训练", "url": "https://arxiv.org/abs/2203.02155"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-10-01", "front": "Reward Model的训练方法？", "back": "架构: LLM backbone + 标量输出头\n  输入: (prompt, response) → 标量r\n数据: 偏好对(chosen, rejected)\nLoss: -log(σ(r_chosen - r_rejected))\n  Bradley-Terry排序模型\n训练: 和SFT类似的流程\n  lr=1e-5, batch_size=32\n注意: RM质量决定了RLHF上限\n  垃圾RM → PPO学到垃圾策略", "topic": "Reward Model", "day": "Day 68", "source": "InstructGPT"}
+      ]
+    },
+    "5-10-2": {
+      "key_points": [
+        "RM训练实践: 使用trl RewardTrainer训练RM",
+        "数据准备: HuggingFace上有公开偏好数据集(如anthropic/hh-rlhf)",
+        "评估: 在held-out偏好对上计算accuracy(RM选择chosen的概率)",
+        "过拟合: RM容易过拟合→被PPO exploit(reward hacking)"
+      ],
+      "resources": [
+        {"name": "trl RewardTrainer", "url": "https://huggingface.co/docs/trl/reward_trainer"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-10-02", "front": "Reward Hacking是什么？如何缓解？", "back": "现象: PPO学会exploit RM漏洞\n  RM分数高但实际质量差\n  如: 生成冗长重复的内容\n原因: RM不完美，有盲点\n缓解:\n1. KL约束(不偏离ref太远)\n2. 多个RM取平均(ensemble)\n3. RM定期更新(对抗训练)\n4. 人工评估监控(定期采样)\n5. 限制训练步数(early stop)", "topic": "Reward Model", "day": "Day 68", "source": "综合"}
+      ]
+    },
+    "5-11-1": {
+      "key_points": [
+        "大规模RLHF: 从7B到70B+模型的RL训练挑战",
+        "显存: 70B PPO需要4×70B参数的显存(Actor+Critic+Ref+RM)→至少需要8×A100 80GB",
+        "通信: 多节点AllReduce带宽瓶颈，需要高速互联(NVLink/InfiniBand)",
+        "稳定性: 大模型RL训练更容易不稳定(gradient explosion/reward collapse)"
+      ],
+      "resources": [
+        {"name": "Scaling RLHF", "url": "https://arxiv.org/abs/2307.15217"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-11-01", "front": "大规模RLHF训练面临哪些挑战？", "back": "显存: 70B PPO需4×70B参数\n  最少8×A100 80GB\n通信: 多节点AllReduce\n  需NVLink/InfiniBand\n稳定性: 大模型更易崩溃\n  gradient clipping, lr warmup\n效率: rollout占时70%\n  需高效推理引擎(vLLM)\n解决: GRPO(省Critic)\n  DeepSpeed ZeRO(显存优化)\n  gradient checkpointing", "topic": "大规模RL", "day": "Day 69", "source": "Scaling RLHF"}
+      ]
+    },
+    "5-11-2": {
+      "key_points": [
+        "unlock-deepseek Infra章节: Datawhale的DeepSeek技术解读",
+        "内容: DeepSeek的训练基础设施、GRPO实现细节、MoE训练策略",
+        "重点: 大规模训练的工程经验(数据并行+流水线并行+专家并行)",
+        "参考: DeepSeek-V2/V3的训练配置和经验"
+      ],
+      "resources": [
+        {"name": "unlock-deepseek", "url": "https://github.com/datawhalechina/unlock-deepseek"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-11-02", "front": "DeepSeek的MoE训练有什么特别？", "back": "专家并行(EP): MoE的Expert分到不同GPU\n  每GPU只持有部分Expert\n  All2All通信路由token到对应Expert\n辅助loss: 负载均衡+路由多样性\n  防止Expert退化(都选同几个)\nMoE+TP+PP+EP: 四维并行\n  DeepSeek-V3: 671B参数\n  激活37B(Top-2 Expert)\n  训练成本远低于等效Dense模型", "topic": "DeepSeek", "day": "Day 69", "source": "unlock-deepseek"}
+      ]
+    },
+    "5-12-1": {
+      "key_points": [
+        "DeepSpeed: Microsoft的分布式训练框架，核心是ZeRO优化器",
+        "ZeRO Stage 1/2/3: 分别将optimizer state/gradients/parameters分片到多GPU",
+        "RL中应用: Actor和Critic各用DeepSpeed包装，独立的ZeRO通信组",
+        "DeepSpeed-Chat: Microsoft的RLHF训练pipeline(基于DeepSpeed)"
+      ],
+      "resources": [
+        {"name": "DeepSpeed GitHub", "url": "https://github.com/microsoft/DeepSpeed"},
+        {"name": "DeepSpeed-Chat", "url": "https://github.com/microsoft/DeepSpeedExamples/tree/master/applications/DeepSpeed-Chat"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-12-01", "front": "DeepSpeed ZeRO三个Stage分别优化什么？", "back": "ZeRO-1: Optimizer State分片\n  每GPU只存1/N的优化器状态\n  显存节省4倍(AdamW状态)\nZeRO-2: +Gradient分片\n  额外节省梯度显存\nZeRO-3: +Parameter分片\n  参数也分到N张GPU\n  显存节省N倍(但通信多)\n选择: ZeRO-2最常用(平衡)\n  ZeRO-3用于超大模型", "topic": "DeepSpeed", "day": "Day 70", "source": "DeepSpeed"}
+      ]
+    },
+    "5-12-2": {
+      "key_points": [
+        "DeepSpeed + veRL配合: veRL用DeepSpeed做训练，vLLM做rollout",
+        "配置: veRL的YAML中指定deepspeed配置(ZeRO stage, bf16等)",
+        "实践: 调整ZeRO stage和offload策略以适配不同GPU显存",
+        "offload: ZeRO-Offload将optimizer state offload到CPU(更省GPU显存但更慢)"
+      ],
+      "resources": [
+        {"name": "veRL DeepSpeed集成", "url": "https://github.com/volcengine/verl"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-12-02", "front": "DeepSpeed在RL训练中的角色？", "back": "训练侧: DeepSpeed包装Actor和Critic\n  ZeRO优化显存\n  bf16混合精度\n  gradient checkpointing\nRollout侧: vLLM独立处理\n  不需要DeepSpeed(纯推理)\n参数同步: training→rollout\n  每次update后同步最新参数\n配置选择:\n  GPU够→ZeRO-2(快)\n  GPU紧→ZeRO-3+offload(慢但能跑)", "topic": "DeepSpeed+RL", "day": "Day 70", "source": "veRL"}
+      ]
+    },
+    "5-13-1": {
+      "key_points": [
+        "RL训练性能: rollout时间、training时间、通信时间的breakdown",
+        "典型分布: rollout 60% + reward 10% + training 25% + 通信 5%",
+        "优化杠杆: rollout用vLLM(最大优化点)→training用DeepSpeed→overlap减少等待",
+        "PPO vs GRPO: GRPO省Critic训练时间但rollout增加K倍"
+      ],
+      "resources": [
+        {"name": "veRL性能分析", "url": "https://github.com/volcengine/verl"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-13-01", "front": "RL训练的时间breakdown？", "back": "典型分布:\n  Rollout: 60%(生成回答)\n  Reward: 10%(RM打分)\n  Training: 25%(PPO更新)\n  通信: 5%(参数同步)\n优化优先级:\n1. Rollout: vLLM加速(最大杠杆)\n2. Training: DeepSpeed+bf16\n3. Overlap: rollout和training并行\nGRPO: 省training(无Critic)\n  但rollout×K(多次采样)", "topic": "RL性能", "day": "Day 71", "source": "veRL"}
+      ]
+    },
+    "5-13-2": {
+      "key_points": [
+        "RL训练全流程总结: 数据准备→SFT→RM训练→RL训练→评估→迭代",
+        "算法选择: DPO(简单快速) vs PPO(最灵活) vs GRPO(大规模高效)",
+        "框架选择: trl(学习) vs veRL(生产) vs OpenRLHF(研究)",
+        "关键经验: RM质量是上限、KL约束很重要、要监控reward hacking"
+      ],
+      "resources": [
+        {"name": "RLHF最佳实践", "url": "https://arxiv.org/abs/2307.15217"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-13-02", "front": "RL训练pipeline的关键经验？", "back": "1. RM质量是RLHF上限\n  花时间做好RM\n2. KL约束必须有\n  防止偏离ref太远\n3. 监控reward hacking\n  定期人工检查输出\n4. 从DPO开始\n  简单验证pipeline正确\n5. 有需要再上PPO/GRPO\n  更灵活但更复杂\n6. 评估用人工+自动\n  自动指标可能被game", "topic": "RL总结", "day": "Day 71", "source": "综合"}
+      ]
+    },
+    "5-14-1": {
+      "key_points": [
+        "第五层通关: 掌握了RLHF全流程，从原理到工程实现",
+        "能力总结: SFT/DPO/PPO/GRPO算法理解+trl/veRL/OpenRLHF框架使用+分布式训练",
+        "面试重点: RLHF三阶段、DPO vs PPO vs GRPO、reward hacking、大规模训练挑战",
+        "下一步: 国产GPU适配(将已有经验迁移到不同硬件)"
+      ],
+      "resources": [
+        {"name": "RL训练综合", "url": "https://github.com/volcengine/verl"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-14-01", "front": "RL训练层的核心能力清单？", "back": "算法: SFT→DPO→PPO→GRPO\n  理解每个算法的公式和代码\n框架: trl(学习)/veRL(生产)/OpenRLHF\n  能跑通PPO/GRPO训练\n分布式: Ray+DeepSpeed+vLLM\n  Actor-Critic分离架构\n工程: RM训练、reward设计\n  reward hacking监控\n  大规模训练调优", "topic": "总结", "day": "Day 72", "source": "综合"}
+      ]
+    },
+    "5-14-2": {
+      "key_points": [
+        "自定义Reward: 根据特定任务设计reward函数(不只用RM)",
+        "规则reward: 代码正确性(编译/测试)、格式检查(JSON/XML)、长度惩罚",
+        "混合reward: 0.7*RM_score + 0.2*format_score + 0.1*length_penalty",
+        "veRL实现: 继承BaseReward类，实现compute_reward方法"
+      ],
+      "resources": [
+        {"name": "veRL自定义Reward", "url": "https://github.com/volcengine/verl"}
+      ],
+      "flashcards": [
+        {"id": "fc-5-14-02", "front": "如何设计自定义Reward函数？", "back": "类型:\n1. RM-based: 通用质量评估\n2. 规则-based: 代码正确/格式检查\n3. 混合: 加权组合多个信号\n设计原则:\n  明确+可度量\n  避免被hack(多维度)\n  正负奖励平衡\n示例: 数学题\n  答案正确+1, 错误-1\n  格式正确+0.5\n  过长惩罚-0.1*excess_len", "topic": "Reward设计", "day": "Day 72", "source": "veRL"}
+      ]
+    }
+  }
+}

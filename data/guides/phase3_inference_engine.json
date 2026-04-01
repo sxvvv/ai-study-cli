@@ -1,0 +1,568 @@
+{
+  "phase_id": 3,
+  "enrichments": {
+    "3-1-1": {
+      "key_points": [
+        "PagedAttention核心: 借鉴OS虚拟内存，将KV Cache按固定大小的block管理，不需要连续物理内存",
+        "Block Table: 逻辑block号→物理block号的映射表，类似页表。每个sequence有独立的block table",
+        "内存利用率: 传统方式预分配最大长度→浪费50-90%，PagedAttention按需分配→浪费<4%",
+        "vLLM实现: PhysicalTokenBlock(固定大小)、BlockAllocator(分配/回收)、BlockSpaceManager(管理映射)"
+      ],
+      "resources": [
+        {"name": "PagedAttention论文(vLLM)", "url": "https://arxiv.org/abs/2309.06180"},
+        {"name": "vLLM GitHub", "url": "https://github.com/vllm-project/vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-1-01", "front": "PagedAttention如何解决KV Cache内存浪费？", "back": "传统: 预分配max_seq_len连续内存→浪费50-90%\nPagedAttention: KV Cache按block(如16 tokens)管理\n不需要连续物理内存\nBlock Table: 逻辑block→物理block映射\n按需分配→浪费<4%\n类比OS: 虚拟页→物理页", "topic": "PagedAttention", "day": "Day 28", "source": "vLLM论文"}
+      ]
+    },
+    "3-1-2": {
+      "key_points": [
+        "OS分页回顾: 虚拟页→页表→物理页，page fault时从磁盘加载",
+        "类比: KV block=虚拟页, 物理GPU内存block=物理页, block table=页表",
+        "Copy-on-Write: 多个sequence共享相同的prompt KV Cache(如beam search)，修改时才复制",
+        "Swap: GPU显存不足时将不活跃sequence的KV Cache换出到CPU内存"
+      ],
+      "resources": [
+        {"name": "CSAPP 虚拟内存", "url": "https://csapp.cs.cmu.edu/"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-1-02", "front": "PagedAttention的Copy-on-Write机制？", "back": "场景: beam search中多个beam共享prompt KV\n实现: 多个逻辑block指向同一物理block\n  物理block有引用计数(ref_count)\n修改时: 如果ref_count>1，复制物理block\n  新逻辑block指向新物理block\n效果: 避免重复存储相同KV Cache", "topic": "PagedAttention", "day": "Day 28", "source": "vLLM论文"}
+      ]
+    },
+    "3-2-1": {
+      "key_points": [
+        "Continuous Batching: 不等一个batch全部结束，新请求可以随时加入(iteration-level scheduling)",
+        "vs Static Batching: 传统方式等最长sequence结束→GPU空闲浪费。Continuous立即复用空位",
+        "Orca论文: 首先提出iteration-level scheduling，每次迭代可以添加/移除sequence",
+        "吞吐量提升: 比static batching提升2-4倍(减少GPU空闲时间)"
+      ],
+      "resources": [
+        {"name": "Orca论文(Continuous Batching)", "url": "https://www.usenix.org/system/files/osdi22-yu.pdf"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-2-01", "front": "Continuous Batching vs Static Batching？", "back": "Static: 等一个batch全部完成再处理下一个\n  短sequence完成后GPU空闲\nContinuous: iteration级调度\n  每次前向后可添加/移除sequence\n  新请求立即加入，完成的立即移除\n吞吐量提升2-4倍\n也叫inflight batching", "topic": "推理优化", "day": "Day 29", "source": "Orca论文"}
+      ]
+    },
+    "3-2-2": {
+      "key_points": [
+        "Prefill阶段: 处理完整prompt，一次性计算所有token的KV Cache。Compute bound(大量矩阵乘)",
+        "Decode阶段: 自回归生成，每步只处理1个token。Memory bound(KV Cache读取占主导)",
+        "不同特征: Prefill可以充分利用GPU并行，Decode每步计算量小但需读大量KV Cache",
+        "混合调度: Prefill和Decode可以在不同batch中混合执行(Chunked Prefill)"
+      ],
+      "resources": [
+        {"name": "Sarathi论文(Chunked Prefill)", "url": "https://arxiv.org/abs/2308.16369"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-2-02", "front": "Prefill和Decode阶段的性能特征？", "back": "Prefill: 处理完整prompt\n  Compute bound(大量GEMM)\n  可充分并行，GPU利用率高\nDecode: 自回归生成1 token/step\n  Memory bound(读KV Cache)\n  计算量小，带宽是瓶颈\n优化方向不同:\n  Prefill→FlashAttention\n  Decode→PagedAttention+batch", "topic": "推理优化", "day": "Day 29", "source": "Sarathi论文"}
+      ]
+    },
+    "3-2-3": {
+      "key_points": [
+        "nano-vllm: 约1200行Python代码实现vLLM核心功能，适合学习推理引擎架构",
+        "核心模块: config→cache→block_manager→sequence→scheduler→engine→paged_attention",
+        "学习路径: 先跑通demo→逐模块阅读→理解数据流→对照vLLM源码",
+        "不含: Tensor Parallel、量化、CUDA kernel(纯Python实现)"
+      ],
+      "resources": [
+        {"name": "nano-vllm GitHub", "url": "https://github.com/GeeeekExplworWorlworeDER/nano-vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-2-03", "front": "nano-vllm的核心模块和数据流？", "back": "1200行Python实现vLLM核心\n模块: config→cache→block_manager\n  →sequence→scheduler→engine\n数据流:\n  请求→Scheduler调度→Engine执行\n  →PagedAttention计算→输出token\n  →Scheduler判断完成/继续\n学习: 先跑通→逐模块读→对照vLLM", "topic": "推理引擎", "day": "Day 29", "source": "nano-vllm"}
+      ]
+    },
+    "3-3-1": {
+      "key_points": [
+        "config.py: 定义模型配置(hidden_size, num_heads等)和推理配置(block_size, max_seq_len)",
+        "cache.py: KV Cache的物理存储管理，预分配GPU显存，按block大小划分",
+        "block_size: 每个block存储的token数(如16)，是PagedAttention的基本单位",
+        "GPU预分配: 启动时根据可用显存计算能容纳多少physical block"
+      ],
+      "resources": [
+        {"name": "nano-vllm源码", "url": "https://github.com/GeeeekExplworWorlworeDER/nano-vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-3-01", "front": "推理引擎中block_size如何选择？", "back": "block_size = 每个KV block存储的token数\n常用: 16或32\n太小: block table大，管理开销高\n太大: 内部碎片多(最后block浪费)\nKV block大小 = block_size × n_heads × head_dim × 2(KV) × dtype\n启动时: 可用显存/block大小 = 最大block数", "topic": "推理引擎", "day": "Day 30", "source": "nano-vllm config/cache"}
+      ]
+    },
+    "3-3-2": {
+      "key_points": [
+        "block.py: PhysicalTokenBlock(物理块)和LogicalTokenBlock(逻辑块)的定义",
+        "block_manager.py: 管理逻辑块到物理块的映射，分配/释放/CoW操作",
+        "BlockAllocator: 维护free_blocks列表，分配时pop，释放时push",
+        "核心方法: allocate(分配新block)、free(释放)、fork(CoW复制映射)"
+      ],
+      "resources": [
+        {"name": "nano-vllm block管理", "url": "https://github.com/GeeeekExplworWorlworeDER/nano-vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-3-02", "front": "BlockManager的核心操作？", "back": "allocate: 从free_blocks分配物理block\n  逻辑block→物理block映射\nfree: 减少ref_count，=0时回收\nfork: CoW，新逻辑block指向同一物理block\n  ref_count++\ncopy_on_write: 写时复制物理block\n  ref_count>1时分配新block并复制", "topic": "推理引擎", "day": "Day 30", "source": "nano-vllm block_manager"}
+      ]
+    },
+    "3-4-1": {
+      "key_points": [
+        "sequence.py: Sequence对象，包含token_ids、逻辑block列表、生成状态(RUNNING/FINISHED)",
+        "SequenceGroup: 同一prompt的多个sequence(beam search)，共享prompt部分的KV Cache",
+        "scheduler.py: 决定哪些sequence参与当前iteration的计算",
+        "调度策略: FCFS(先到先服务)，优先级: RUNNING > SWAPPED > WAITING"
+      ],
+      "resources": [
+        {"name": "nano-vllm scheduler", "url": "https://github.com/GeeeekExplworWorlworeDER/nano-vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-4-01", "front": "推理引擎Scheduler的调度策略？", "back": "三个队列:\n  WAITING: 新到的请求\n  RUNNING: 正在生成的sequence\n  SWAPPED: 换出到CPU的sequence\n每次iteration:\n1. 先处理RUNNING的(继续decode)\n2. 有空间则从WAITING加入(prefill)\n3. 显存不足时RUNNING→SWAPPED\n策略: FCFS，保证公平性", "topic": "推理引擎", "day": "Day 31", "source": "nano-vllm scheduler"}
+      ]
+    },
+    "3-4-2": {
+      "key_points": [
+        "engine.py: 推理引擎主循环，协调scheduler、model、cache_manager",
+        "主循环: while有未完成请求: scheduler调度→model前向→采样→更新状态→输出",
+        "add_request: 外部接口，添加新推理请求到WAITING队列",
+        "step: 一次迭代，执行一步decode或一次prefill"
+      ],
+      "resources": [
+        {"name": "nano-vllm engine", "url": "https://github.com/GeeeekExplworWorlworeDER/nano-vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-4-02", "front": "推理引擎Engine的主循环流程？", "back": "while 有未完成请求:\n1. scheduler.schedule() → 选sequence\n2. 准备输入(token_ids, position_ids)\n3. model.forward() → logits\n4. sample(logits) → next_token\n5. 更新sequence状态\n6. 完成的移出，返回结果\n外部: engine.add_request()添加请求", "topic": "推理引擎", "day": "Day 31", "source": "nano-vllm engine"}
+      ]
+    },
+    "3-5-1": {
+      "key_points": [
+        "paged_attention.py: PagedAttention的计算逻辑，根据block table查找KV Cache",
+        "计算: Q与分散在不同物理block中的K做attention，通过block table索引",
+        "分块计算: 每次处理一个KV block，累积attention结果(类似FlashAttention)",
+        "naive实现(Python): 循环遍历blocks，gather KV → 计算attention → 累加"
+      ],
+      "resources": [
+        {"name": "PagedAttention kernel", "url": "https://arxiv.org/abs/2309.06180"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-5-01", "front": "PagedAttention的计算流程？", "back": "输入: Q(当前token), block_table, KV_cache\n计算:\n  for block_id in block_table:\n    K,V = KV_cache[block_id]  # gather\n    score = Q @ K.T / sqrt(d)\n    # online softmax更新\n    output += softmax_score @ V\n关键: KV不连续存储\n  通过block_table间接索引", "topic": "PagedAttention", "day": "Day 32", "source": "vLLM论文"}
+      ]
+    },
+    "3-5-2": {
+      "key_points": [
+        "动手实验: 修改nano-vllm的调度策略，观察吞吐量和延迟变化",
+        "实验1: 改变block_size(8/16/32)，观察内存利用率和碎片",
+        "实验2: 改变max_batch_size，观察GPU利用率和延迟",
+        "度量: throughput(tokens/s)、latency(ms/token)、GPU memory utilization"
+      ],
+      "resources": [
+        {"name": "nano-vllm", "url": "https://github.com/GeeeekExplworWorlworeDER/nano-vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-5-02", "front": "推理引擎的关键性能指标？", "back": "Throughput: tokens/s(总吞吐)\nLatency: ms/token(单请求延迟)\nTTFT: Time To First Token(首token延迟)\nGPU Util: GPU利用率\nMemory Util: 显存利用率\n权衡: batch大→吞吐高但延迟增\nblock_size大→碎片多但管理开销小", "topic": "推理引擎", "day": "Day 32", "source": "nano-vllm实验"}
+      ]
+    },
+    "3-6-1": {
+      "key_points": [
+        "mini-vllm: 另一个简化版vLLM实现，可以与nano-vllm对比学习",
+        "架构对比: 不同实现对Scheduler、BlockManager的设计选择",
+        "代码风格: 学习生产级代码的组织方式和错误处理",
+        "关键差异: 数据结构选择、内存管理策略、并发处理"
+      ],
+      "resources": [
+        {"name": "vLLM项目", "url": "https://github.com/vllm-project/vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-6-01", "front": "学习推理引擎源码的方法论？", "back": "1. 先跑通简化版(nano-vllm)\n2. 理解核心数据流\n3. 画架构图标注模块关系\n4. 对比不同实现的设计选择\n5. 逐步读生产版(vLLM)\n路径: demo→简化版→生产版\n重点: 数据流>具体代码", "topic": "学习方法", "day": "Day 33", "source": "mini-vllm"}
+      ]
+    },
+    "3-6-2": {
+      "key_points": [
+        "架构图绘制: 用图表展示nano-vllm的模块关系和数据流",
+        "核心数据流: Request→Scheduler→Engine→Model→Sampler→Output",
+        "内存数据流: BlockManager→BlockAllocator→PhysicalBlock→KV Cache",
+        "总结文档: 记录学到的核心概念和代码实现要点"
+      ],
+      "resources": [
+        {"name": "nano-vllm源码", "url": "https://github.com/GeeeekExplworWorlworeDER/nano-vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-6-02", "front": "推理引擎的核心数据流？", "back": "请求流: Client→Engine.add_request()\n  →Scheduler.waiting队列\n调度流: Scheduler→选sequence→batch\n计算流: Model.forward(batch)→logits\n  →Sampler→next_token\n内存流: BlockManager分配/释放\n  →BlockAllocator→PhysicalBlock\n  →KV Cache GPU显存", "topic": "推理引擎", "day": "Day 33", "source": "nano-vllm总结"}
+      ]
+    },
+    "3-7-1": {
+      "key_points": [
+        "PagedAttention CUDA kernel: 将Python实现转为CUDA，大幅提升性能",
+        "kernel设计: 每个thread block处理一个attention head，循环遍历KV blocks",
+        "优化: 使用shared memory缓存KV block，warp-level reduce求softmax",
+        "挑战: 非连续内存访问(gather)、在线softmax在CUDA中的实现"
+      ],
+      "resources": [
+        {"name": "vLLM PagedAttention kernel", "url": "https://github.com/vllm-project/vllm/blob/main/csrc/attention/attention_kernels.cu"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-7-01", "front": "PagedAttention CUDA kernel的设计要点？", "back": "每thread block: 处理一个head\n  循环遍历block_table中的KV blocks\n内存: block_table在寄存器/shared mem\n  KV block从global mem加载到shared\n计算: Q@K.T用shared mem\n  softmax用warp-level reduce\n挑战: 非连续KV gather\n  在线softmax跨blocks累积", "topic": "CUDA kernel", "day": "Day 34", "source": "vLLM CUDA kernel"}
+      ]
+    },
+    "3-7-2": {
+      "key_points": [
+        "HowToApproachvLLM: 如何系统性地阅读vLLM这样的大型项目(10万+行)",
+        "方法: 从API入口开始→跟踪请求处理流程→理解核心数据结构→深入关键模块",
+        "重点模块: EngineCore(调度)、ModelRunner(计算)、BlockManager(内存)、Worker(执行)",
+        "技巧: 用debug断点跟踪、画调用链图、先读tests理解接口"
+      ],
+      "resources": [
+        {"name": "vLLM源码", "url": "https://github.com/vllm-project/vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-7-02", "front": "如何阅读vLLM这样的大型项目？", "back": "1. 从API入口开始(LLM类/AsyncLLM)\n2. 跟踪请求处理流程(debug断点)\n3. 理解核心数据结构(Sequence/Block)\n4. 深入关键模块:\n  EngineCore→调度逻辑\n  ModelRunner→模型执行\n  BlockManager→KV Cache管理\n5. 先读tests理解接口契约", "topic": "学习方法", "day": "Day 34", "source": "vLLM"}
+      ]
+    },
+    "3-8-1": {
+      "key_points": [
+        "vLLM安装: pip install vllm，需要CUDA 11.8+和PyTorch 2.0+",
+        "基本使用: from vllm import LLM; llm = LLM('model_name'); outputs = llm.generate(prompts)",
+        "服务模式: python -m vllm.entrypoints.openai.api_server --model xxx，提供OpenAI兼容API",
+        "7B模型推理: 需要约16GB显存(FP16)，量化(AWQ/GPTQ)可降到8GB"
+      ],
+      "resources": [
+        {"name": "vLLM快速开始", "url": "https://docs.vllm.ai/en/latest/getting_started/quickstart.html"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-8-01", "front": "vLLM的两种使用方式？", "back": "离线推理:\n  from vllm import LLM\n  llm = LLM('Qwen/Qwen2-7B')\n  outputs = llm.generate(prompts)\n在线服务:\n  python -m vllm.entrypoints.openai.api_server\n  --model Qwen/Qwen2-7B --port 8000\n  兼容OpenAI API格式\n显存: 7B FP16需~16GB", "topic": "vLLM", "day": "Day 35", "source": "vLLM文档"}
+      ]
+    },
+    "3-8-2": {
+      "key_points": [
+        "Benchmark工具: vLLM自带benchmark脚本，测试吞吐量和延迟",
+        "关键参数: --num-prompts, --input-len, --output-len, --tensor-parallel-size",
+        "指标: throughput(req/s), latency P50/P99, TTFT, token throughput(tokens/s)",
+        "对比: vLLM vs HuggingFace Transformers → vLLM通常快3-20倍"
+      ],
+      "resources": [
+        {"name": "vLLM benchmark", "url": "https://docs.vllm.ai/en/latest/performance/benchmarks.html"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-8-02", "front": "推理引擎benchmark的关键指标？", "back": "Request Throughput: req/s\nToken Throughput: tokens/s(总)\nLatency P50/P99: 中位/99分位延迟\nTTFT: 首token延迟(用户感知)\nITL: Inter-Token Latency(每token)\nvLLM vs HF: 通常快3-20倍\n原因: PagedAttention+ContinuousBatch", "topic": "性能测试", "day": "Day 35", "source": "vLLM benchmark"}
+      ]
+    },
+    "3-8-3": {
+      "key_points": [
+        "vLLM V1架构: 简化的单进程架构，移除了ray依赖(单机场景)",
+        "核心组件: Processor(预处理)→EngineCore(调度+执行)→OutputProcessor(后处理)",
+        "异步设计: EngineCore独立进程，通过ZMQ通信，非阻塞调度",
+        "vs V0: V1更简洁高效，减少了IPC开销，scheduler和model_runner在同一进程"
+      ],
+      "resources": [
+        {"name": "vLLM V1设计文档", "url": "https://docs.vllm.ai/en/latest/design/v1_design.html"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-8-03", "front": "vLLM V1 vs V0的架构区别？", "back": "V0: 多进程(ray)，IPC开销大\nV1: 简化单进程架构\n  Processor→EngineCore→OutputProcessor\n  EngineCore: scheduler+model_runner同进程\n  通过ZMQ通信(异步非阻塞)\n优势: 减少IPC开销，更低延迟\n  单机场景不再需要ray", "topic": "vLLM", "day": "Day 35", "source": "vLLM V1设计文档"}
+      ]
+    },
+    "3-9-1": {
+      "key_points": [
+        "Processor: 请求预处理，tokenize输入、验证参数、构建SequenceGroup",
+        "功能: 处理chat template、处理多模态输入(图片)、参数校验",
+        "输出: 将用户请求转化为Engine内部的数据结构(EngineCoreRequest)",
+        "位置: 在Engine主进程中，EngineCore之前"
+      ],
+      "resources": [
+        {"name": "vLLM源码", "url": "https://github.com/vllm-project/vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-9-01", "front": "vLLM V1 Processor的职责？", "back": "输入: 用户原始请求(prompt+params)\n处理:\n1. Tokenize(prompt→token_ids)\n2. 应用Chat Template\n3. 处理多模态输入(图片→tokens)\n4. 参数校验(max_tokens等)\n输出: EngineCoreRequest\n  包含token_ids/sampling_params等\n交给EngineCore调度执行", "topic": "vLLM V1", "day": "Day 36", "source": "vLLM源码"}
+      ]
+    },
+    "3-9-2": {
+      "key_points": [
+        "EngineCore: vLLM V1的核心，包含Scheduler和ModelRunner",
+        "主循环: scheduler.schedule()→准备输入→model_runner.execute()→处理输出→更新状态",
+        "异步: EngineCore在独立进程中运行，通过ZMQ接收请求和返回结果",
+        "优化: 减少Python GIL影响，计算和调度可以overlap"
+      ],
+      "resources": [
+        {"name": "vLLM V1 EngineCore", "url": "https://github.com/vllm-project/vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-9-02", "front": "vLLM V1 EngineCore的内部流程？", "back": "独立进程运行:\nwhile True:\n  # 接收新请求(ZMQ)\n  new_reqs = recv_requests()\n  scheduler.add_requests(new_reqs)\n  # 调度\n  batch = scheduler.schedule()\n  # 执行\n  output = model_runner.execute(batch)\n  # 处理输出\n  results = process_output(output)\n  send_results(results)  # ZMQ", "topic": "vLLM V1", "day": "Day 36", "source": "vLLM源码"}
+      ]
+    },
+    "3-10-1": {
+      "key_points": [
+        "Scheduler核心: 管理三个队列(waiting/running/swapped)，决定每次iteration的batch组成",
+        "调度决策: 1.有显存→从waiting取新请求prefill 2.显存不足→preempt(swap/recompute)",
+        "Preemption策略: swap(KV Cache搬到CPU)或recompute(丢弃KV Cache,重新计算)",
+        "Budget: 每次iteration有token budget和seq budget，限制batch大小"
+      ],
+      "resources": [
+        {"name": "vLLM Scheduler", "url": "https://github.com/vllm-project/vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-10-01", "front": "vLLM Scheduler的Preemption策略？", "back": "显存不足时需要抢占:\nSwap: KV Cache从GPU搬到CPU\n  恢复时搬回GPU(IO开销)\nRecompute: 丢弃KV Cache\n  恢复时重新prefill(计算开销)\n选择: seq短→recompute快\n  seq长→swap划算(避免重算)\nvLLM默认: recompute", "topic": "vLLM", "day": "Day 37", "source": "vLLM Scheduler"}
+      ]
+    },
+    "3-10-2": {
+      "key_points": [
+        "V1 BlockManager: 简化版block管理，使用前缀树(radix tree)优化prefix caching",
+        "分配: 每个sequence按需分配物理block，不预分配",
+        "释放: sequence完成时释放所有block，或preempt时释放部分",
+        "Prefix Caching: 相同prefix的请求共享KV Cache block"
+      ],
+      "resources": [
+        {"name": "vLLM BlockManager V1", "url": "https://github.com/vllm-project/vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-10-02", "front": "Prefix Caching如何工作？", "back": "观察: 很多请求共享相同system prompt\n实现: 用hash标识block内容\n  相同hash→复用物理block(不重算KV)\nRadix Tree: 前缀树存储已缓存的序列\n  新请求查找最长匹配前缀\n  只需计算未匹配部分的KV\n效果: system prompt只算一次\n  TTFT大幅降低", "topic": "vLLM优化", "day": "Day 37", "source": "vLLM BlockManager"}
+      ]
+    },
+    "3-11-1": {
+      "key_points": [
+        "OutputProcessor: 处理模型输出，detokenize、判断停止条件、流式输出",
+        "Detokenize: token_ids→文本，增量detokenize(只处理新token)",
+        "停止条件: max_tokens达到、EOS token、stop字符串匹配",
+        "流式输出: 每生成一个token就可以返回(SSE/WebSocket)"
+      ],
+      "resources": [
+        {"name": "vLLM OutputProcessor", "url": "https://github.com/vllm-project/vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-11-01", "front": "推理引擎的停止条件有哪些？", "back": "1. max_tokens: 达到最大生成长度\n2. EOS token: 模型生成了结束token\n3. stop strings: 匹配用户指定的停止字符串\n4. stop token_ids: 匹配指定的token ID\n增量detokenize: 每次只处理新token\n流式输出: 每token返回(SSE)\n  用户感知延迟 = TTFT", "topic": "推理引擎", "day": "Day 38", "source": "vLLM OutputProcessor"}
+      ]
+    },
+    "3-11-2": {
+      "key_points": [
+        "ModelRunner: 负责模型的实际执行，准备输入tensor、调用模型forward、管理CUDA图",
+        "CUDA Graph: 录制模型forward计算图，replay时避免Python开销(对decode batch特别有效)",
+        "输入准备: 根据scheduler结果，组装token_ids/position_ids/block_tables等tensor",
+        "支持: 混合prefill+decode batch、TP(tensor parallel)下的通信"
+      ],
+      "resources": [
+        {"name": "vLLM ModelRunner", "url": "https://github.com/vllm-project/vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-11-02", "front": "CUDA Graph在推理中的作用？", "back": "问题: Python调度kernel有开销(~ms)\n  Decode时每步只处理几十个token\n  Python开销占比很高\nCUDA Graph: 录制计算图一次\n  之后replay(免Python开销)\n限制: 输入shape必须固定\n  → padding到固定batch大小\n效果: decode延迟降低20-40%", "topic": "推理优化", "day": "Day 38", "source": "vLLM ModelRunner"}
+      ]
+    },
+    "3-12-1": {
+      "key_points": [
+        "Prefix Caching实践: 使用vLLM的自动prefix caching功能测试",
+        "开启方式: LLM(..., enable_prefix_caching=True)",
+        "测试: 发送多个相同system prompt的请求，观察TTFT变化",
+        "效果: 第一个请求正常prefill，后续请求TTFT大幅降低(跳过共享prefix)"
+      ],
+      "resources": [
+        {"name": "vLLM Prefix Caching", "url": "https://docs.vllm.ai/en/latest/automatic_prefix_caching/apc.html"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-12-01", "front": "Prefix Caching的性能收益？", "back": "场景: 多请求共享system prompt(如RAG)\n首次: 正常prefill所有token\n后续: 跳过匹配的prefix部分\n  只prefill新增的user部分\nTTFT降低: system prompt越长越明显\n  如2K system prompt→节省80% TTFT\n开启: enable_prefix_caching=True", "topic": "vLLM优化", "day": "Day 39", "source": "vLLM文档"}
+      ]
+    },
+    "3-12-2": {
+      "key_points": [
+        "SGLang: 另一个高性能推理引擎，与vLLM竞争",
+        "创新: RadixAttention(更高效的prefix caching)、结构化输出优化",
+        "编程模型: SGLang DSL可以编写复杂的LLM程序(多轮、分支、约束生成)",
+        "对比vLLM: SGLang在某些场景更快，特别是复杂推理流程"
+      ],
+      "resources": [
+        {"name": "SGLang GitHub", "url": "https://github.com/sgl-project/sglang"},
+        {"name": "SGLang论文", "url": "https://arxiv.org/abs/2312.07104"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-12-02", "front": "SGLang vs vLLM的主要区别？", "back": "SGLang:\n  RadixAttention(高效prefix cache)\n  SGLang DSL(编程式LLM调用)\n  结构化输出优化(JSON等)\nvLLM:\n  PagedAttention(通用KV管理)\n  OpenAI兼容API\n  更广泛的模型支持\n两者都用: ContinuousBatching+FlashAttn\n选择: 复杂推理→SGLang, 通用服务→vLLM", "topic": "推理引擎", "day": "Day 39", "source": "SGLang论文"}
+      ]
+    },
+    "3-12-3": {
+      "key_points": [
+        "vLLM设计文档: 理解vLLM的整体架构设计决策和trade-off",
+        "关键决策: 为什么用PagedAttention、为什么V1简化架构、scheduler设计原则",
+        "扩展性: Tensor Parallel(多GPU)、Pipeline Parallel、模型支持框架",
+        "未来方向: FlashInfer集成、Speculative Decoding、更好的多模态支持"
+      ],
+      "resources": [
+        {"name": "vLLM设计文档", "url": "https://docs.vllm.ai/en/latest/design/"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-12-03", "front": "vLLM的多GPU并行策略？", "back": "Tensor Parallel(TP):\n  模型参数分到多张GPU\n  AllReduce通信同步中间结果\n  适合单机多卡\nPipeline Parallel(PP):\n  模型层分段到不同GPU\n  流水线执行减少bubble\n  适合跨机器\n常用: 7B用1卡，70B用TP=4-8\nvLLM自动处理TP通信", "topic": "vLLM", "day": "Day 39", "source": "vLLM设计文档"}
+      ]
+    },
+    "3-13-1": {
+      "key_points": [
+        "FlashAttention-2 CUDA源码: 理解tiling策略在C++/CUDA中的实际实现",
+        "文件结构: flash_fwd_kernel.h(前向kernel)、flash_bwd_kernel.h(反向kernel)",
+        "关键数据结构: Params(配置)、SharedStorage(shared memory布局)",
+        "阅读重点: 外层循环(Q blocks)→内层循环(KV blocks)→在线softmax更新"
+      ],
+      "resources": [
+        {"name": "FlashAttention-2源码", "url": "https://github.com/Dao-AILab/flash-attention"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-13-01", "front": "FlashAttention CUDA源码的核心循环结构？", "back": "外层: 遍历Q blocks(每个thread block一个Q块)\n内层: 遍历KV blocks\n  1. 加载K block到shared mem\n  2. S = Q @ K.T (Tensor Core)\n  3. 在线softmax: 更新m_i, l_i\n  4. 加载V block到shared mem\n  5. O += softmax(S) @ V\n  6. rescale之前的累积结果\n反向: 需要recompute S", "topic": "FlashAttention", "day": "Day 40", "source": "FlashAttention-2源码"}
+      ]
+    },
+    "3-13-2": {
+      "key_points": [
+        "FlashAttention tiling图解: 用图表理解Q/K/V的分块和内存访问模式",
+        "Q分块: 沿seq维度分成M/BM个块，每个thread block处理一个Q块",
+        "KV分块: 沿seq维度分成N/BN个块，内层循环依次处理",
+        "内存层次: Q块常驻shared mem，KV块循环加载(每次一个)"
+      ],
+      "resources": [
+        {"name": "FlashAttention图解", "url": "https://gordicaleksa.medium.com/eli5-flash-attention-5c44017022ad"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-13-02", "front": "FlashAttention的tiling维度和内存布局？", "back": "Q: [M, d] 分成 M/BM 个块\n  每个thread block常驻一个Q块\nK: [N, d] 分成 N/BN 个块\nV: [N, d] 分成 N/BN 个块\n  KV块循环加载到shared mem\n内存: Q块在shared mem常驻\n  KV块每次加载一个(循环)\n  O在寄存器累积\n总shared mem ≈ (BM+2*BN)*d*sizeof", "topic": "FlashAttention", "day": "Day 40", "source": "FlashAttention图解"}
+      ]
+    },
+    "3-14-1": {
+      "key_points": [
+        "Forward Pass实现: 初始化m=-inf, l=0, O=0 → 循环KV blocks → 输出O和logsumexp(lse)",
+        "在线Softmax: m_new=max(m_old, rowmax(S)), l_new=exp(m_old-m_new)*l_old + rowsum(exp(S-m_new))",
+        "输出更新: O_new = (l_old*exp(m_old-m_new)*O_old + exp(S-m_new)@V) / l_new",
+        "保存lse: 反向需要logsumexp = m + log(l)，用于重算softmax"
+      ],
+      "resources": [
+        {"name": "FlashAttention论文", "url": "https://arxiv.org/abs/2205.14135"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-14-01", "front": "FlashAttention Forward的在线Softmax更新？", "back": "初始: m=-inf, l=0, O=0\n每个KV block:\n  S = Q_block @ K_block.T\n  m_new = max(m_old, rowmax(S))\n  l_new = exp(m_old-m_new)*l_old\n        + rowsum(exp(S-m_new))\n  O = diag(exp(m_old-m_new)/l_new*l_old)*O_old\n    + exp(S-m_new)/l_new @ V_block\n保存: lse = m + log(l) (反向用)", "topic": "FlashAttention", "day": "Day 41", "source": "FlashAttention论文"}
+      ]
+    },
+    "3-14-2": {
+      "key_points": [
+        "Backward Pass: 需要重新计算attention矩阵S(recomputation)，不需要存储O(N²)的中间结果",
+        "梯度: dV = P^T @ dO, dP = dO @ V^T, dS = P ⊙ (dP - rowsum(dP ⊙ P)), dQ = dS @ K, dK = dS^T @ Q",
+        "recomputation: 前向时只保存lse，反向时从Q,K重新算S和P，节省O(N²)显存",
+        "反向也用tiling: 外层循环KV blocks(算dK,dV)，内层循环Q blocks"
+      ],
+      "resources": [
+        {"name": "FlashAttention反向推导", "url": "https://arxiv.org/abs/2205.14135"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-14-02", "front": "FlashAttention反向为什么需要recomputation？", "back": "标准反向: 需要存N×N的P=softmax(S)\n  显存O(N²)，N=seq_len很大\nFlashAttention: 前向只存lse\n  反向时从Q,K重算S和P(用时间换空间)\n  dV = P.T @ dO (需要P→重算)\n  dS = P ⊙ (dP - rowsum(dP⊙P))\n显存: O(N)，代价是~25%额外计算", "topic": "FlashAttention", "day": "Day 41", "source": "FlashAttention论文"}
+      ]
+    },
+    "3-15-1": {
+      "key_points": [
+        "FlashAttention benchmark: 对比标准attention、FlashAttention-1、FlashAttention-2的性能",
+        "测试维度: 不同seq_len(512/1K/2K/4K/8K)、不同head_dim(64/128)、不同batch_size",
+        "指标: 运行时间(ms)、显存占用(GB)、TFLOPS利用率",
+        "预期结果: FA-2比标准attention快5-10倍(长序列)，显存从O(N²)降到O(N)"
+      ],
+      "resources": [
+        {"name": "FlashAttention benchmark", "url": "https://github.com/Dao-AILab/flash-attention"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-15-01", "front": "FlashAttention的性能提升有多大？", "back": "速度: 比标准attention快2-10倍\n  seq_len越长越明显(IO节省越多)\n显存: O(N²)→O(N)\n  4K seq: 从~4GB降到~100MB\nTFLOPS: 达理论峰值50-73%\nFA-2 vs FA-1: 再快~2倍\n关键: 减少HBM访问(IO-aware)", "topic": "FlashAttention", "day": "Day 42", "source": "FlashAttention benchmark"}
+      ]
+    },
+    "3-15-2": {
+      "key_points": [
+        "Speculative Decoding: 用小模型快速猜测K个token，大模型一次性验证(并行验证)",
+        "原理: 小模型draft K个token → 大模型一次forward验证 → 接受前N个正确的(N≤K)",
+        "加速: 理想情况一次forward生成K+1个token(vs标准的1个)，加速K+1倍",
+        "验证算法: 使用modified rejection sampling保证输出分布与大模型完全一致"
+      ],
+      "resources": [
+        {"name": "Speculative Decoding论文", "url": "https://arxiv.org/abs/2302.01318"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-15-02", "front": "Speculative Decoding的原理和加速比？", "back": "1. 小模型(draft)快速生成K个token\n2. 大模型(target)一次forward验证\n3. 接受前N个正确的(N≤K)\n4. 拒绝的位置用target分布重采样\n加速: 理想K+1倍(实际2-3倍)\n保证: modified rejection sampling\n  输出分布与纯target模型完全一致\n关键: 小模型越准，接受率越高", "topic": "推理优化", "day": "Day 42", "source": "Speculative Decoding论文"}
+      ]
+    },
+    "3-15-3": {
+      "key_points": [
+        "Chunked Prefill: 将长prefill切成多个chunk，与decode混合执行",
+        "问题: 长prefill独占GPU很久，decode请求被延迟(starvation)",
+        "解决: 将prefill按chunk_size(如512)分割，每个iteration处理一个chunk+一些decode",
+        "效果: 降低decode请求的排队延迟(latency)，略微增加prefill延迟(throughput不变)"
+      ],
+      "resources": [
+        {"name": "Sarathi论文", "url": "https://arxiv.org/abs/2308.16369"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-15-03", "front": "Chunked Prefill解决什么问题？", "back": "问题: 长prompt的prefill独占GPU\n  decode请求被饿死(延迟飙升)\n解决: 将prefill分成多个chunk\n  每iteration: 一个prefill chunk + decode batch\n  chunk_size通常512-2048 tokens\n效果: decode延迟降低(不用等)\n  prefill延迟略增(分次完成)\n  总吞吐量基本不变", "topic": "推理优化", "day": "Day 42", "source": "Sarathi论文"}
+      ]
+    },
+    "3-16-1": {
+      "key_points": [
+        "vLLM高级配置: TP/PP设置、CUDA Graph控制、调度器参数调优",
+        "TP设置: --tensor-parallel-size N，跨N张GPU分割模型(需NVLink最佳)",
+        "调度参数: max_num_seqs(最大并发)、max_num_batched_tokens(每步最大token数)",
+        "GPU Memory: --gpu-memory-utilization 0.9(显存利用比)，剩余10%留给临时分配"
+      ],
+      "resources": [
+        {"name": "vLLM配置文档", "url": "https://docs.vllm.ai/en/latest/serving/engine_args.html"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-16-01", "front": "vLLM的关键配置参数？", "back": "模型: --tensor-parallel-size N\n内存: --gpu-memory-utilization 0.9\n调度: --max-num-seqs 256\n  --max-num-batched-tokens 8192\n性能: --enable-prefix-caching\n  --enforce-eager (禁用CUDA Graph调试)\n量化: --quantization awq/gptq\n启动: python -m vllm.entrypoints.openai.api_server", "topic": "vLLM配置", "day": "Day 43", "source": "vLLM文档"}
+      ]
+    },
+    "3-16-2": {
+      "key_points": [
+        "量化概述: 将FP16权重压缩到INT8/INT4/FP8，减少显存和带宽需求",
+        "INT8量化: 权重从2B→1B，显存减半。per-channel或per-tensor scale",
+        "INT4量化: 权重从2B→0.5B，显存降到1/4。需要group quantization(每组128个权重一个scale)",
+        "FP8: Hopper架构支持FP8 Tensor Core，精度损失极小(0.1-0.3%)"
+      ],
+      "resources": [
+        {"name": "量化技术综述", "url": "https://arxiv.org/abs/2308.07633"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-16-02", "front": "LLM量化的三种精度和trade-off？", "back": "INT8: 显存减半，精度损失小(<1%)\n  per-channel scale足够\nINT4: 显存1/4，精度损失中(1-3%)\n  需要group quantization\nFP8: Hopper架构支持\n  精度损失极小(0.1-0.3%)\n  训练+推理都可用\n选择: 精度敏感→FP8\n  显存紧张→INT4(AWQ/GPTQ)", "topic": "量化", "day": "Day 43", "source": "量化综述"}
+      ]
+    },
+    "3-17-1": {
+      "key_points": [
+        "AWQ(Activation-aware Weight Quantization): 根据激活值分布决定量化策略",
+        "核心思想: 不是所有权重同等重要，对激活值大的通道保持更高精度(per-channel scale)",
+        "实现: 先分析校准数据上的激活分布，找到salient channels，保护其精度",
+        "vs GPTQ: AWQ更简单快速(无需逐层重建)，精度相当或更好"
+      ],
+      "resources": [
+        {"name": "AWQ论文", "url": "https://arxiv.org/abs/2306.00978"},
+        {"name": "AutoAWQ工具", "url": "https://github.com/casper-hansen/AutoAWQ"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-17-01", "front": "AWQ量化的核心思想？", "back": "观察: 1%的salient权重影响大部分输出\n  这些权重对应激活值大的通道\n方法: 分析校准数据的激活分布\n  对salient通道用更大的scale(保精度)\n  对其他通道正常量化(压缩)\nvs GPTQ: 无需逐层Hessian重建\n  更快(几分钟 vs 几小时)\n  精度相当或更好", "topic": "量化", "day": "Day 44", "source": "AWQ论文"}
+      ]
+    },
+    "3-17-2": {
+      "key_points": [
+        "vLLM AWQ部署: vllm serve model --quantization awq，支持AWQ量化模型",
+        "AWQ模型: HuggingFace上有预量化的AWQ模型(如TheBloke/xxx-AWQ)",
+        "自己量化: 使用AutoAWQ库，需要校准数据集(几百条即可)",
+        "性能测试: INT4 AWQ vs FP16，对比吞吐量、延迟、输出质量"
+      ],
+      "resources": [
+        {"name": "vLLM量化部署", "url": "https://docs.vllm.ai/en/latest/quantization/"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-17-02", "front": "如何用vLLM部署AWQ量化模型？", "back": "预量化模型:\n  vllm serve TheBloke/Llama-2-7B-AWQ\n  --quantization awq\n自己量化:\n  from awq import AutoAWQForCausalLM\n  model.quantize(tokenizer, quant_config)\n  model.save_quantized('output')\n效果: 7B模型从~14GB→~4GB\n吞吐量提升~2倍(INT4更快)", "topic": "量化部署", "day": "Day 44", "source": "vLLM量化文档"}
+      ]
+    },
+    "3-18-1": {
+      "key_points": [
+        "推理引擎全栈知识: PagedAttention+ContinuousBatching+FlashAttention+量化+Speculative Decoding",
+        "核心trade-off: 吞吐量 vs 延迟、显存 vs 精度、速度 vs 复杂度",
+        "技术栈: nano-vllm(学习)→vLLM(生产)→SGLang(高级)→TensorRT-LLM(极致优化)",
+        "面试要点: PagedAttention原理、KV Cache计算、Scheduler设计、量化方法对比"
+      ],
+      "resources": [
+        {"name": "推理引擎综合资料", "url": "https://github.com/datawhalechina/so-large-lm"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-18-01", "front": "推理引擎的核心技术栈？", "back": "内存: PagedAttention(KV Cache管理)\n调度: Continuous Batching(动态batch)\n计算: FlashAttention(IO-aware attention)\n压缩: AWQ/GPTQ量化(INT4/INT8)\n加速: Speculative Decoding(推测解码)\n优化: CUDA Graph/Prefix Caching\n框架: vLLM/SGLang/TensorRT-LLM", "topic": "总结", "day": "Day 45", "source": "综合资料"}
+      ]
+    },
+    "3-18-2": {
+      "key_points": [
+        "综合benchmark: 对比不同配置下的推理性能",
+        "测试矩阵: FP16/INT8/INT4 × 不同batch_size × 不同seq_len",
+        "报告格式: 配置→结果→分析→结论，附性能曲线图",
+        "关键发现: 量化对吞吐量提升显著，对长序列FlashAttention至关重要"
+      ],
+      "resources": [
+        {"name": "vLLM benchmark工具", "url": "https://github.com/vllm-project/vllm/tree/main/benchmarks"}
+      ],
+      "flashcards": [
+        {"id": "fc-3-18-02", "front": "推理引擎benchmark应该测试哪些维度？", "back": "变量:\n1. 量化精度: FP16/INT8/INT4/FP8\n2. Batch size: 1/8/32/128\n3. Seq length: 128/512/2K/8K\n4. 功能: prefix caching ON/OFF\n指标: throughput/latency P50,P99/TTFT\n工具: vLLM自带benchmark脚本\n结论: 分析每个变量的影响", "topic": "性能测试", "day": "Day 45", "source": "vLLM benchmark"}
+      ]
+    }
+  }
+}

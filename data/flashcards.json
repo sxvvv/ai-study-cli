@@ -1,0 +1,1686 @@
+{
+  "cards": [
+    {
+      "id": "fc-1-1-01",
+      "front": "Self-Attention的计算公式是什么？每个符号代表什么？",
+      "back": "Attention(Q,K,V) = softmax(QK^T / sqrt(d_k)) * V\nQ=Query, K=Key, V=Value, d_k=Key维度\n除以sqrt(d_k)防止点积过大导致softmax饱和",
+      "topic": "Transformer",
+      "day": "Day 1",
+      "source": "Attention Is All You Need",
+      "code": "scores = torch.matmul(Q, K.transpose(-2,-1)) / math.sqrt(d_k)\nscores = F.softmax(scores, dim=-1)\noutput = torch.matmul(scores, V)"
+    },
+    {
+      "id": "fc-1-1-02",
+      "front": "Multi-Head Attention为什么要拆成多个头？",
+      "back": "每个头学习不同的注意力模式（语法/语义/共指等）\n拆分后每个头维度=d_model/h，计算量不变\nMultiHead = Concat(head_1..h) · W_O",
+      "topic": "Transformer",
+      "day": "Day 1",
+      "source": "Attention Is All You Need",
+      "code": ""
+    },
+    {
+      "id": "fc-1-1-03",
+      "front": "MiniMind 26M参数量怎么算？",
+      "back": "Embedding: 6400×512=3.3M\n每个Block: Attn(Wq+Wk+Wv+Wo=4×512×512) + FFN(w1+w2+w3) + 2×RMSNorm ≈ 2.8M\n8个Block: 8×2.8M=22.4M\nLM_Head与Embedding共享权重\n总计≈26M",
+      "topic": "MiniMind",
+      "day": "Day 1",
+      "source": "minimind/model/LMConfig.py",
+      "code": ""
+    },
+    {
+      "id": "fc-1-1-04",
+      "front": "LLM训练的四个阶段是什么？每个阶段的目标？",
+      "back": "1. Pretrain: 海量文本续写，学语言能力\n2. SFT: instruction-response对，学遵循指令\n3. LoRA: 低秩微调，参数高效适配\n4. DPO/RLHF: 人类偏好对齐，更有帮助更安全",
+      "topic": "LLM训练",
+      "day": "Day 1",
+      "source": "MiniMind README",
+      "code": ""
+    },
+    {
+      "id": "fc-1-2-01",
+      "front": "RMSNorm和LayerNorm的区别？为什么现代LLM都用RMSNorm？",
+      "back": "LayerNorm: (x-mean)/sqrt(var+eps)*gamma+beta\nRMSNorm: x/sqrt(mean(x²)+eps)*gamma\n区别: 省去减均值和bias，计算更快\n效果几乎一样，只做缩放就够了",
+      "topic": "Normalization",
+      "day": "Day 2",
+      "source": "minimind/model/model.py",
+      "code": "def forward(self, x):\n    norm = torch.rsqrt(x.pow(2).mean(-1,keepdim=True)+self.eps)\n    return x * norm * self.weight"
+    },
+    {
+      "id": "fc-1-2-02",
+      "front": "RoPE如何让Attention感知位置？",
+      "back": "将位置m编码为旋转角度θ，对Q和K做旋转\nf(q,m)=R(m)·q, f(k,n)=R(n)·k\nQ·K^T自动变成关于相对位置(m-n)的函数\n频率: θ_i = 10000^(-2i/d)\n天然支持外推到更长序列",
+      "topic": "位置编码",
+      "day": "Day 2",
+      "source": "RoFormer论文",
+      "code": ""
+    },
+    {
+      "id": "fc-1-2-03",
+      "front": "SwiGLU的公式和优势？",
+      "back": "SwiGLU(x) = W2(SiLU(W1·x) ⊙ W3·x)\nSiLU(x) = x·sigmoid(x)\nvs ReLU: 无死神经元\nvs GELU: 门控(W3)选择性通过信息\n代价: 多一个W3，参数+33%",
+      "topic": "FFN",
+      "day": "Day 2",
+      "source": "minimind/model/model.py",
+      "code": "def forward(self, x):\n    return self.w2(F.silu(self.w1(x)) * self.w3(x))"
+    },
+    {
+      "id": "fc-1-3-01",
+      "front": "GQA和MHA、MQA的区别？",
+      "back": "MHA: n_heads个Q头，n_heads个KV头\nMQA: n_heads个Q头，1个KV头(极端压缩)\nGQA: n_heads个Q头，n_kv_heads个KV头(折中)\nMiniMind: 16个Q头共享8组KV\n优势: KV Cache减半，推理加速",
+      "topic": "Attention",
+      "day": "Day 3",
+      "source": "GQA论文",
+      "code": ""
+    },
+    {
+      "id": "fc-1-3-02",
+      "front": "KV Cache的原理和内存计算？",
+      "back": "自回归生成时缓存之前token的K和V\n新token只需算自己的q,k,v再拼接\n内存 = 2(K+V) × n_layers × n_kv_heads × d_head × seq_len × dtype\nGQA让n_kv_heads更小→Cache更小→能放更长序列",
+      "topic": "推理优化",
+      "day": "Day 3",
+      "source": "minimind/model/model.py",
+      "code": ""
+    },
+    {
+      "id": "fc-1-3-03",
+      "front": "BPE分词的步骤？",
+      "back": "1. 初始化: 文本拆成单个字符/byte\n2. 统计所有相邻pair出现频率\n3. 合并频率最高的pair为新token\n4. 重复2-3直到达到vocab_size\nMiniMind: vocab_size=6400(小)\nGPT-4: 100k+(大)",
+      "topic": "Tokenizer",
+      "day": "Day 3",
+      "source": "minimind/scripts/train_tokenizer.py",
+      "code": ""
+    },
+    {
+      "id": "fc-1-3-04",
+      "front": "RMSNorm/RoPE/GQA/SwiGLU各解决什么问题？",
+      "back": "RMSNorm: 训练稳定性，比LayerNorm快\nRoPE: 位置编码，支持长度外推\nGQA: KV Cache内存减半，推理加速\nSwiGLU: FFN表达能力，门控选择信息\n这四个是现代LLM的标配组件",
+      "topic": "LLM组件",
+      "day": "Day 3",
+      "source": "LLaMA论文",
+      "code": ""
+    },
+    {
+      "id": "fc-1-4-01",
+      "front": "Pretrain数据格式和训练目标是什么？",
+      "back": "数据: JSONL格式，每行{\"text\": \"连续文本\"}\n目标: Causal LM，预测下一个token\nlabel = input右移一位\nloss = CrossEntropy(logits, labels)\n只算非padding位置的loss",
+      "topic": "预训练",
+      "day": "Day 4",
+      "source": "train_pretrain.py",
+      "code": ""
+    },
+    {
+      "id": "fc-1-4-02",
+      "front": "Cosine LR Schedule的公式和作用？",
+      "back": "lr = min_lr + 0.5*(max_lr-min_lr)*(1+cos(π*t/T))\n先warmup线性增长到peak\n然后余弦衰减到min_lr\n作用: 前期快速学习，后期精细调整\n比固定lr或step decay更平滑",
+      "topic": "优化器",
+      "day": "Day 4",
+      "source": "train_pretrain.py",
+      "code": ""
+    },
+    {
+      "id": "fc-1-4-03",
+      "front": "虚拟内存的核心机制和PagedAttention的关系？",
+      "back": "OS: 虚拟地址→页表→物理地址，按页(4KB)管理\nTLB缓存页表，命中率>99%\nPagedAttention: 借鉴同样思想\n将KV Cache按block(页)管理\n不需要连续物理内存→减少碎片→提高吞吐",
+      "topic": "虚拟内存",
+      "day": "Day 4",
+      "source": "CSAPP Ch.9 + PagedAttention论文",
+      "code": ""
+    },
+    {
+      "id": "fc-1-5-01",
+      "front": "Perplexity的含义和计算公式？",
+      "back": "PPL = exp(CrossEntropyLoss)\n含义: 模型对下一个token的平均困惑度\nPPL=10 → 平均在10个候选中犹豫\n越低越好。GPT-3在测试集PPL≈20\nMiniMind pretrain预期: 从3000+降到20-50",
+      "topic": "评估指标",
+      "day": "Day 5",
+      "source": "训练日志分析",
+      "code": ""
+    },
+    {
+      "id": "fc-1-5-02",
+      "front": "Chinchilla定律是什么？对预训练数据量有什么指导？",
+      "back": "Chinchilla定律: 最优训练时\n数据token数 ≈ 20 × 模型参数量\n如7B模型需约140B tokens\n数据不足→欠训练(undertrained)\n数据过多→收益递减\n结论: 数据质量和数量同等重要",
+      "topic": "数据工程",
+      "day": "Day 5",
+      "source": "Chinchilla论文(DeepMind)",
+      "code": ""
+    },
+    {
+      "id": "fc-1-5-03",
+      "front": "mmap内存映射的原理和在LLM中的应用？",
+      "back": "mmap: 将文件映射到虚拟地址空间\n访问时触发page fault→OS从磁盘加载该页\n优点: lazy loading，不需一次性读入\nLLM应用: 大模型权重文件(.bin)用mmap加载\n避免OOM，按需加载所需权重页",
+      "topic": "内存管理",
+      "day": "Day 5",
+      "source": "CSAPP Ch.9",
+      "code": ""
+    },
+    {
+      "id": "fc-1-6-01",
+      "front": "SFT和Pretrain的核心区别？",
+      "back": "Pretrain: 海量文本续写，学语言能力\n  数据: {\"text\": \"连续文本\"}\n  lr=1e-4, 多epoch\nSFT: 指令-回答对，学指令跟随\n  数据: {\"instruction\":...,\"output\":...}\n  lr=1e-5, 2-3 epoch\n  防止灾难性遗忘",
+      "topic": "SFT",
+      "day": "Day 6",
+      "source": "train_full_sft.py",
+      "code": ""
+    },
+    {
+      "id": "fc-1-6-02",
+      "front": "SFT中为什么要做Loss Mask？怎么实现？",
+      "back": "原因: 只需学生成回答，不需学生成问题\nMask: system和user部分的labels设为-100\nCrossEntropyLoss(ignore_index=-100)\n只有assistant部分参与loss计算\n格式: <bos>system...user...assistant...<eos>",
+      "topic": "SFT",
+      "day": "Day 6",
+      "source": "MiniMind训练代码",
+      "code": ""
+    },
+    {
+      "id": "fc-1-7-01",
+      "front": "如何评估SFT后的模型质量？",
+      "back": "1. 多轮对话测试: 上下文一致性\n2. MT-Bench: GPT-4自动打分(1-10)\n3. 人工A/B测试: 对比不同版本\n4. 检查: 指令跟随度、幻觉率\n注意: BLEU/ROUGE不适合开放式生成\nMiniMind 26M: 能答简单问题",
+      "topic": "模型评估",
+      "day": "Day 7",
+      "source": "MT-Bench论文",
+      "code": ""
+    },
+    {
+      "id": "fc-1-7-02",
+      "front": "SFT和Pretrain的代码差异在哪？",
+      "back": "数据: SFT用对话格式，Pretrain用纯文本\nLoss: SFT有mask(只算assistant)，Pretrain全算\nLR: SFT更小(1e-5)，Pretrain较大(1e-4)\nEpoch: SFT少(2-3)，Pretrain多\n其余(模型/优化器/调度)基本相同",
+      "topic": "SFT",
+      "day": "Day 7",
+      "source": "train_full_sft.py vs train_pretrain.py",
+      "code": ""
+    },
+    {
+      "id": "fc-1-7-03",
+      "front": "Pretrain vs SFT: 数据、Loss、行为三方面差异？",
+      "back": "数据: Pretrain=TB级无标注文本, SFT=10K-100K指令对\nLoss: Pretrain=所有token, SFT=只算assistant token\n行为: Pretrain=只会续写, SFT=遵循指令回答\n比喻: Pretrain=大量阅读学语言, SFT=做题学应试",
+      "topic": "训练对比",
+      "day": "Day 7",
+      "source": "InstructGPT论文",
+      "code": ""
+    },
+    {
+      "id": "fc-1-8-01",
+      "front": "LoRA的核心公式和为什么只调Q和V？",
+      "back": "公式: W = W₀ + BA (W₀冻结)\nB∈R^(d×r), A∈R^(r×d), r<<d\n参数量: d²→2dr (r=8时减少99%+)\n只调Q和V: 实验表明效果最好\nK和FFN的收益递减\nrank: r=8-16常用，越大越接近full FT",
+      "topic": "LoRA",
+      "day": "Day 8",
+      "source": "LoRA论文",
+      "code": ""
+    },
+    {
+      "id": "fc-1-8-02",
+      "front": "LoRA训练的参数量对比和合并方式？",
+      "back": "Full FT: 训练全部26M参数\nLoRA(r=8): 只训练~0.2M参数(<1%)\n速度: LoRA快2-3倍，显存-50%\n合并: W_merged = W₀ + BA\n合并后推理无额外开销\n可以为不同任务训练不同LoRA适配器",
+      "topic": "LoRA",
+      "day": "Day 8",
+      "source": "train_lora.py",
+      "code": ""
+    },
+    {
+      "id": "fc-1-9-01",
+      "front": "DPO的核心公式和相比RLHF的优势？",
+      "back": "L = -log σ(β(log π_θ(y_w|x)/π_ref(y_w|x) - log π_θ(y_l|x)/π_ref(y_l|x)))\ny_w=chosen, y_l=rejected\n优势: 无需训练Reward Model\n直接从偏好数据优化\n训练更稳定，超参更少\nβ控制偏离参考模型的程度",
+      "topic": "DPO",
+      "day": "Day 9",
+      "source": "DPO论文",
+      "code": ""
+    },
+    {
+      "id": "fc-1-9-02",
+      "front": "DPO训练需要什么数据和模型？",
+      "back": "模型: π_ref(SFT后冻结) + π_θ(可训练)\n数据: {prompt, chosen, rejected}\n来源: 人工标注或GPT-4生成偏好对\n训练: 同时前向两个模型算log概率差\n超参: β=0.1, 1K-10K偏好对即可\n数据质量 > 数量",
+      "topic": "DPO",
+      "day": "Day 9",
+      "source": "train_dpo.py",
+      "code": ""
+    },
+    {
+      "id": "fc-1-10-01",
+      "front": "RLHF的三个阶段分别是什么？",
+      "back": "阶段1: SFT - 用指令数据微调基础模型\n阶段2: RM - 训练奖励模型(偏好对比较)\n  输入(prompt,response)→标量奖励\n阶段3: PPO - 用RM奖励优化策略\n  加KL约束防止偏离SFT模型太远\nInstructGPT证明了这个流程的有效性",
+      "topic": "RLHF",
+      "day": "Day 10",
+      "source": "InstructGPT论文",
+      "code": ""
+    },
+    {
+      "id": "fc-1-10-02",
+      "front": "GRPO和PPO的核心区别？",
+      "back": "PPO: 需要Critic网络估计value\nGRPO: 去掉Critic，用组内相对奖励\n方法: 同一prompt采样一组回答\n用组内均值/标准差归一化奖励\n优势: 省去Critic(资源减半)\nDeepSeek-R1: GRPO+纯RL涌现CoT",
+      "topic": "GRPO",
+      "day": "Day 10",
+      "source": "DeepSeekMath论文",
+      "code": ""
+    },
+    {
+      "id": "fc-1-11-01",
+      "front": "PPO训练需要几个模型？各自作用？",
+      "back": "4个模型:\n1. Actor: 生成回答(要训练的)\n2. Critic: 估计state value(要训练)\n3. RM: 给回答打分(冻结)\n4. Ref: 参考模型算KL(冻结)\n总reward = RM分数 - β×KL(Actor||Ref)",
+      "topic": "PPO",
+      "day": "Day 11",
+      "source": "train_ppo.py",
+      "code": ""
+    },
+    {
+      "id": "fc-1-11-02",
+      "front": "PPO的Clipped Objective公式和作用？",
+      "back": "L = min(r_t·A_t, clip(r_t,1-ε,1+ε)·A_t)\nr_t = π_θ(a|s)/π_old(a|s)\nε=0.2: 限制策略更新幅度\n防止单步更新过大导致训练崩溃\nGAE计算advantage:\nA_t = Σ(γλ)^l·δ_{t+l}",
+      "topic": "PPO",
+      "day": "Day 11",
+      "source": "PPO论文",
+      "code": ""
+    },
+    {
+      "id": "fc-1-12-01",
+      "front": "GRPO的采样和奖励计算过程？",
+      "back": "1. 每个prompt生成K个回答(K=8)\n2. RM对每个回答打分\n3. 归一化: r_i = (r_i-mean)/std\n4. 用归一化奖励更新Actor\n只需Actor+Ref两个模型\n比PPO少Critic，训练更稳定",
+      "topic": "GRPO",
+      "day": "Day 12",
+      "source": "train_grpo.py",
+      "code": ""
+    },
+    {
+      "id": "fc-1-12-02",
+      "front": "PPO vs DPO vs GRPO: 模型数量和适用场景？",
+      "back": "PPO: 4模型(Actor+Critic+RM+Ref)\n  最灵活，资源消耗最大\nDPO: 2模型(θ+Ref)，无需RM\n  最简单，直接偏好优化\nGRPO: 2模型+RM采样\n  省Critic，大规模稳定\n选择: 资源多→PPO，简单→DPO，大规模→GRPO",
+      "topic": "对齐方法",
+      "day": "Day 12",
+      "source": "综述论文",
+      "code": ""
+    },
+    {
+      "id": "fc-1-13-01",
+      "front": "VLM(视觉语言模型)的基本架构？",
+      "back": "三部分:\n1. CLIP视觉编码器: 图像→patch tokens\n2. 线性投影层: 视觉维度→文本维度\n3. LLM解码器: 处理视觉+文本token\nMiniMind-V: 50个visual tokens拼接到text前\n类似LLaVA架构",
+      "topic": "VLM",
+      "day": "Day 13",
+      "source": "MiniMind-V",
+      "code": ""
+    },
+    {
+      "id": "fc-1-13-02",
+      "front": "VLM训练时哪些部分需要冻结？",
+      "back": "CLIP视觉编码器: 通常冻结(已预训练好)\n投影层: 必须训练(连接视觉和文本)\nLLM: 可选训练(取决于资源)\n阶段1: 只训练投影层(图文对齐)\n阶段2: 解冻LLM微调(视觉指令跟随)",
+      "topic": "VLM",
+      "day": "Day 13",
+      "source": "LLaVA论文",
+      "code": ""
+    },
+    {
+      "id": "fc-1-13-03",
+      "front": "CLIP如何将图像变成50个visual tokens？",
+      "back": "1. 图像resize到224×224\n2. ViT分成14×14=196个patch\n3. 每个patch编码为768维向量\n4. 池化/选择→50个visual tokens\n5. 线性投影768→512(LLM维度)\n6. 拼接到text tokens前面输入LLM",
+      "topic": "VLM",
+      "day": "Day 13",
+      "source": "vision_utils.py",
+      "code": ""
+    },
+    {
+      "id": "fc-1-14-01",
+      "front": "VLM训练的两个阶段？",
+      "back": "阶段1: 图文对齐\n  数据: 图片-描述对\n  训练: 只投影层，CLIP和LLM冻结\n阶段2: 视觉指令微调\n  数据: 图片+问题→回答\n  训练: 投影层+LLM，CLIP冻结\nLoss只算文本生成部分",
+      "topic": "VLM训练",
+      "day": "Day 14",
+      "source": "LLaVA论文",
+      "code": ""
+    },
+    {
+      "id": "fc-1-14-02",
+      "front": "MoE的路由机制和负载均衡？",
+      "back": "路由: Router(x)=softmax(x·W_gate)\n选Top-K个Expert(通常K=2)\n输出: Σ(gate_i × Expert_i(x))\n负载均衡Loss: L_aux = N·Σ(f_i·P_i)\nf_i=Expert_i被选频率\nP_i=Router给Expert_i的平均概率\n防止token都选同几个Expert",
+      "topic": "MoE",
+      "day": "Day 14",
+      "source": "Switch Transformer",
+      "code": ""
+    },
+    {
+      "id": "fc-1-15-01",
+      "front": "从零构建LLM的完整流程图？",
+      "back": "模型: Tokenizer→Embed→N×Block→LM_Head\nBlock: RMSNorm→Attn(RoPE+GQA)→RMSNorm→FFN(SwiGLU)\n训练: Pretrain→SFT→LoRA→DPO/PPO/GRPO\n扩展: MoE(稀疏)、VLM(多模态)、DDP(多卡)\n组件选择: RMSNorm+RoPE+GQA+SwiGLU=现代LLM标配",
+      "topic": "总结",
+      "day": "Day 15",
+      "source": "MiniMind全流程",
+      "code": ""
+    },
+    {
+      "id": "fc-1-15-02",
+      "front": "DDP多卡训练的流程和注意事项？",
+      "back": "流程: 每GPU完整模型副本\n各自处理不同batch→前向→反向\nAllReduce梯度平均→同步更新\n启动: torchrun --nproc_per_node=N\n注意: batch_size按GPU数缩放\nlr线性缩放(linear scaling rule)",
+      "topic": "分布式训练",
+      "day": "Day 15",
+      "source": "PyTorch DDP教程",
+      "code": ""
+    },
+    {
+      "id": "fc-1-15-03",
+      "front": "Dense vs MoE vs VLM的区别和选择？",
+      "back": "Dense: 全参数计算(LLaMA/GPT)\nMoE: 稀疏激活Top-K Expert\n  参数大计算小(Mixtral 8x7B≈14B计算)\nVLM: +视觉编码器(GPT-4V/LLaVA)\n选择: 资源有限→Dense\n  追求效率→MoE\n  多模态→VLM",
+      "topic": "模型架构",
+      "day": "Day 15",
+      "source": "Mixtral论文",
+      "code": ""
+    },
+    {
+      "id": "fc-2-1-01",
+      "front": "GPU的线程层次结构？Warp是什么？",
+      "back": "Grid → Block → Warp(32线程) → Thread\nWarp是最小调度单位(SIMT)\n同一Warp内线程执行相同指令\nWarp divergence: 分支导致串行执行\n占用率 = 活跃Warp/最大Warp\n受寄存器、shared memory、block大小限制",
+      "topic": "GPU架构",
+      "day": "Day 16",
+      "source": "CUDA Programming Guide",
+      "code": ""
+    },
+    {
+      "id": "fc-2-1-02",
+      "front": "CUDA kernel的线程索引怎么算？",
+      "back": "全局索引 = blockIdx.x * blockDim.x + threadIdx.x\n启动: kernel<<<gridDim, blockDim>>>()\ngridDim = (N + blockDim - 1) / blockDim\n边界检查: if(idx < N)\nthreadIdx: 块内索引\nblockIdx: 块号\nblockDim: 每块线程数",
+      "topic": "CUDA基础",
+      "day": "Day 16",
+      "source": "CUDA Programming",
+      "code": "__global__ void add(float*a,float*b,float*c,int n){\n  int i=blockIdx.x*blockDim.x+threadIdx.x;\n  if(i<n) c[i]=a[i]+b[i];\n}"
+    },
+    {
+      "id": "fc-2-1-03",
+      "front": "Amdahl定律的公式和含义？",
+      "back": "加速比 = 1/((1-f) + f/S)\nf = 可并行化的比例\nS = 并行部分的加速倍数\n含义: 即使S→∞，加速比上限=1/(1-f)\n如果90%可并行→最多加速10倍\n启示: 优化串行瓶颈比堆更多核心重要",
+      "topic": "程序优化",
+      "day": "Day 16",
+      "source": "CSAPP Ch.5",
+      "code": ""
+    },
+    {
+      "id": "fc-2-2-01",
+      "front": "Parallel Reduction的优化策略？",
+      "back": "基础: 树形归约，每步线程减半\n优化1: 连续线程活跃(避免divergence)\n优化2: 首次加载时就做一次reduce\n优化3: warp shuffle替代shared memory\n  __shfl_down_sync(mask,val,offset)\n优化4: 循环展开最后warp(无需sync)\n复杂度: O(N)工作量，O(logN)步骤",
+      "topic": "CUDA算法",
+      "day": "Day 17",
+      "source": "NVIDIA Reduce PDF",
+      "code": ""
+    },
+    {
+      "id": "fc-2-2-02",
+      "front": "CUDA内存层次和Bank Conflict？",
+      "back": "Global: 几十GB，~400cycles延迟\nShared: 48-164KB/SM，~5cycles\nRegister: 每线程私有，最快\nConstant: 只读，有cache\nBank Conflict: shared memory分32 bank\n同warp线程访问同bank→串行化\n解决: padding或调整访问模式",
+      "topic": "CUDA内存",
+      "day": "Day 17",
+      "source": "CUDA Programming Guide",
+      "code": ""
+    },
+    {
+      "id": "fc-2-3-01",
+      "front": "Naive矩阵乘法为什么慢？",
+      "back": "每个线程算C[i][j]=Σ A[i][k]*B[k][j]\n每次FMA需2次global memory读取\n算术强度≈1 FLOP/Byte(极低)\nB的列访问不连续(non-coalesced)\n性能只有峰值的1-5%\n瓶颈: memory bound(带宽限制)",
+      "topic": "矩阵乘法",
+      "day": "Day 18",
+      "source": "LeetCUDA",
+      "code": ""
+    },
+    {
+      "id": "fc-2-3-02",
+      "front": "矩阵乘法Tiling优化的原理？",
+      "back": "将矩阵分成TILE×TILE小块\n加载tile到shared memory(快)\n每个元素只读global 1次，复用TILE次\n算术强度提升TILE倍\nTile=16: 从1→16 FLOP/Byte\n步骤: load tile→sync→compute→sync→next tile\nTile大小: 16×16或32×32常用",
+      "topic": "矩阵乘法",
+      "day": "Day 18",
+      "source": "CUDA Programming",
+      "code": ""
+    },
+    {
+      "id": "fc-2-4-01",
+      "front": "GPU存储器层次和各层延迟？",
+      "back": "Register: ~0.5ns (最快，最小)\nL1/Shared: ~5ns (48-164KB/SM)\nL2: ~20ns (几MB，所有SM共享)\nHBM: ~200ns (几十GB，2TB/s带宽)\nCache Line: GPU 128B\nCoalesced访问: 同warp连续地址→1次传输\n局部性: 时间+空间",
+      "topic": "存储器层次",
+      "day": "Day 19",
+      "source": "CSAPP Ch.6",
+      "code": ""
+    },
+    {
+      "id": "fc-2-4-02",
+      "front": "数值稳定的Softmax怎么实现？",
+      "back": "问题: exp(x)对大值溢出\n解决: softmax(x_i)=exp(x_i-max)/Σexp(x_j-max)\n三遍: 1.求max 2.求Σexp 3.除以sum\nOnline算法: 一遍求max+sum\n  遇到新max时修正之前的sum\nCUDA: 每block一行\n  parallel reduce求max→求sum→除",
+      "topic": "Softmax",
+      "day": "Day 19",
+      "source": "Online Softmax论文",
+      "code": ""
+    },
+    {
+      "id": "fc-2-5-01",
+      "front": "Roofline Model的公式和两个bound？",
+      "back": "性能上限 = min(峰值算力, 带宽×AI)\nAI(算术强度) = FLOPs / Bytes\n拐点: AI = 峰值算力/带宽\nMemory Bound: AI<拐点(element-wise)\n  优化: 减少访存(fusion)\nCompute Bound: AI>拐点(GEMM)\n  优化: 提高算力利用率",
+      "topic": "性能分析",
+      "day": "Day 20",
+      "source": "Roofline论文",
+      "code": ""
+    },
+    {
+      "id": "fc-2-5-02",
+      "front": "Nsight Compute能分析什么？",
+      "back": "kernel级性能分析工具\n指标: SM利用率、内存带宽、算术强度\n自动生成roofline图\n判断kernel是memory/compute bound\n使用: ncu --set full -o report ./prog\n还有Nsight Systems: 系统级时间线分析",
+      "topic": "性能分析",
+      "day": "Day 20",
+      "source": "Nsight Compute文档",
+      "code": ""
+    },
+    {
+      "id": "fc-2-6-01",
+      "front": "Triton和CUDA编程的核心区别？",
+      "back": "CUDA: thread级编程\n  手动管理shared mem/coalescing\nTriton: block级编程\n  每个program处理一个数据块\n  编译器自动优化内存访问\nAPI: tl.program_id(axis)\n  tl.load(ptr, mask=...)\n  tl.store(ptr, val, mask=...)\n开发效率高5-10倍，性能接近手写CUDA",
+      "topic": "Triton",
+      "day": "Day 21",
+      "source": "Triton教程",
+      "code": ""
+    },
+    {
+      "id": "fc-2-6-02",
+      "front": "Triton kernel的基本结构？",
+      "back": "@triton.jit\ndef kernel(x_ptr,y_ptr,n,BLOCK:tl.constexpr):\n  pid = tl.program_id(0)\n  offs = pid*BLOCK + tl.arange(0,BLOCK)\n  mask = offs < n\n  x = tl.load(x_ptr+offs, mask=mask)\n  tl.store(y_ptr+offs, x+1, mask=mask)\ngrid = (triton.cdiv(n, BLOCK),)",
+      "topic": "Triton",
+      "day": "Day 21",
+      "source": "Triton教程",
+      "code": "@triton.jit\ndef add_kernel(x_ptr,y_ptr,out_ptr,n,BLOCK:tl.constexpr):\n  pid=tl.program_id(0)\n  offs=pid*BLOCK+tl.arange(0,BLOCK)\n  mask=offs<n\n  x=tl.load(x_ptr+offs,mask=mask)\n  y=tl.load(y_ptr+offs,mask=mask)\n  tl.store(out_ptr+offs,x+y,mask=mask)"
+    },
+    {
+      "id": "fc-2-6-03",
+      "front": "Fused Softmax为什么比分步Softmax快？",
+      "back": "分步: 3个kernel\n  1.max(读+写) 2.exp_sum(读+写) 3.div(读+写)\n  = 3次global读 + 3次global写\nFused: 1个kernel\n  load→max→exp→sum→div→store\n  = 1次global读 + 1次global写\n访存减少3倍→速度提升2-3倍\n数值稳定: 减max后再exp",
+      "topic": "Triton",
+      "day": "Day 21",
+      "source": "Triton教程",
+      "code": ""
+    },
+    {
+      "id": "fc-2-7-01",
+      "front": "Triton矩阵乘法的tiling策略？",
+      "back": "每个program算C的BLOCK_M×BLOCK_N块\nfor k in range(0,K,BLOCK_K):\n  a=tl.load(A tile) # BLOCK_M×BLOCK_K\n  b=tl.load(B tile) # BLOCK_K×BLOCK_N\n  acc += tl.dot(a, b)  # Tensor Core\ntl.store(C tile, acc)\n调优: BLOCK_M/N/K, num_warps\n性能达cuBLAS 80-90%",
+      "topic": "Triton GEMM",
+      "day": "Day 22",
+      "source": "Triton GEMM教程",
+      "code": ""
+    },
+    {
+      "id": "fc-2-7-02",
+      "front": "Triton LayerNorm的fused实现？",
+      "back": "每program处理一行:\n1. 加载整行到寄存器\n2. 算mean = tl.sum(x)/N\n3. 算var = tl.sum((x-mean)²)/N\n4. norm = (x-mean)/sqrt(var+eps)\n5. out = norm * gamma + beta\n6. store回global memory\nvs分步: 5个kernel→1个kernel\n速度提升2-4倍",
+      "topic": "Triton",
+      "day": "Day 22",
+      "source": "Triton教程",
+      "code": ""
+    },
+    {
+      "id": "fc-2-8-01",
+      "front": "Triton中2D block索引怎么做？",
+      "back": "row_offs = pid_m*BM + tl.arange(0,BM)\ncol_offs = pid_n*BN + tl.arange(0,BN)\n# 2D偏移\noffs = row_offs[:,None]*stride + col_offs[None,:]\n# mask\nmask = (row_offs[:,None]<M) & (col_offs[None,:]<N)\ndata = tl.load(ptr+offs, mask=mask)",
+      "topic": "Triton Puzzles",
+      "day": "Day 23",
+      "source": "Triton-Puzzles",
+      "code": ""
+    },
+    {
+      "id": "fc-2-8-02",
+      "front": "CUDA kernel优化的一般步骤？",
+      "back": "1. 写naive实现，确保正确\n2. ncu profile判断瓶颈\n3. Memory bound→减少访存\n  coalescing, shared mem tiling\n4. Compute bound→提高利用率\n  Tensor Core, 循环展开\n5. 其他: 减少sync, bank conflict\n6. 重复profile直到满意",
+      "topic": "CUDA优化",
+      "day": "Day 23",
+      "source": "LeetCUDA",
+      "code": ""
+    },
+    {
+      "id": "fc-2-9-01",
+      "front": "Triton中如何处理矩阵转置访问？",
+      "back": "方法1: 调整stride\n  a_ptr + row*stride_am + col*stride_ak\n  转置时交换stride_am和stride_ak\n方法2: tl.trans(block)\n  对加载的block做转置\n关键: 保证coalesced访问\n  最内层维度连续访问",
+      "topic": "Triton进阶",
+      "day": "Day 24",
+      "source": "Triton-Puzzles",
+      "code": ""
+    },
+    {
+      "id": "fc-2-9-02",
+      "front": "FlashAttention的核心思想和优势？",
+      "back": "问题: 标准attention需O(N²)显存\nFlashAttention: tiling分块计算\n  不存N×N attention矩阵\n  显存从O(N²)降到O(N)\nIO-aware: 减少HBM访问次数\n  将QKV分块加载到SRAM计算\nRecomputation: 反向时重算attention\n  用时间(重算)换空间(不存)\n速度: 快2-4倍(减少IO)",
+      "topic": "FlashAttention",
+      "day": "Day 24",
+      "source": "FlashAttention论文",
+      "code": ""
+    },
+    {
+      "id": "fc-2-10-01",
+      "front": "Triton中如何实现causal mask？",
+      "back": "# 在attention计算中\nq_offs = pid_m * BM + tl.arange(0, BM)\nk_offs = start_k + tl.arange(0, BN)\nmask = q_offs[:, None] >= k_offs[None, :]\nscores = tl.where(mask, scores, float('-inf'))\n# softmax后-inf变0，自动causal",
+      "topic": "Triton进阶",
+      "day": "Day 25",
+      "source": "Triton-Puzzles",
+      "code": ""
+    },
+    {
+      "id": "fc-2-10-02",
+      "front": "FlashAttention的在线Softmax更新公式？",
+      "back": "处理新KV block时:\nm_new = max(m_old, max(scores_new))\nl_new = l_old*exp(m_old-m_new) + sum(exp(scores_new-m_new))\nacc_new = acc_old*exp(m_old-m_new)/l_new + exp(scores_new-m_new)@V/l_new\n最终: O = acc (数值等价于标准softmax)",
+      "topic": "FlashAttention",
+      "day": "Day 25",
+      "source": "Triton教程",
+      "code": ""
+    },
+    {
+      "id": "fc-2-11-01",
+      "front": "如何用Triton实现Fused RMSNorm？",
+      "back": "@triton.jit\ndef rms_norm_kernel(x_ptr,w_ptr,out_ptr,N,eps,BLOCK:tl.constexpr):\n  row = tl.program_id(0)\n  offs = tl.arange(0,BLOCK)\n  x = tl.load(x_ptr+row*N+offs, mask=offs<N)\n  rms = tl.sqrt(tl.sum(x*x)/N + eps)\n  w = tl.load(w_ptr+offs, mask=offs<N)\n  tl.store(out_ptr+row*N+offs, x/rms*w, mask=offs<N)",
+      "topic": "Triton实战",
+      "day": "Day 26",
+      "source": "Liger-Kernel",
+      "code": ""
+    },
+    {
+      "id": "fc-2-11-02",
+      "front": "Liger-Kernel的FusedLinearCrossEntropy解决什么问题？",
+      "back": "问题: LM_Head输出logits维度=vocab_size(32K-100K+)\n存储logits需大量显存(batch×seq×vocab×4B)\nFused: 不存完整logits\n  分块计算Linear→softmax→CrossEntropy\n  每次只存一小块logits\n显存节省~30%，速度快20%",
+      "topic": "Kernel优化",
+      "day": "Day 26",
+      "source": "Liger-Kernel",
+      "code": ""
+    },
+    {
+      "id": "fc-2-12-01",
+      "front": "GPU kernel优化的三大核心策略？",
+      "back": "1. Tiling: 数据分块加载到shared mem\n  减少global memory访问次数\n2. Fusion: 多步操作合并为一个kernel\n  减少kernel launch和global读写\n3. Coalescing: 同warp线程访问连续地址\n  一次传输128B(cache line)\n判断方向: Roofline Model\n工具: Nsight Compute",
+      "topic": "总结",
+      "day": "Day 27",
+      "source": "GPU编程总结",
+      "code": ""
+    },
+    {
+      "id": "fc-2-12-02",
+      "front": "如何写kernel性能分析报告？",
+      "back": "1. 问题描述: kernel功能和输入规模\n2. 基线性能: naive实现的时间和利用率\n3. 优化步骤: 每步做了什么+提升\n4. Roofline图: 标注kernel位置\n5. 对比: vs cuBLAS达到X%\n6. 结论: 瓶颈在哪、还能优化什么",
+      "topic": "性能分析",
+      "day": "Day 27",
+      "source": "Nsight Compute",
+      "code": ""
+    },
+    {
+      "id": "fc-2-12-03",
+      "front": "FlashAttention-2比FA-1快在哪？",
+      "back": "改进1: 减少非GEMM计算(softmax分步)\n改进2: 沿seq_len额外并行(更多block)\n  FA-1: batch×heads个block\n  FA-2: batch×heads×ceil(seq/BM)个block\n改进3: warp专门化(GEMM/softmax分离)\n结果: ~2倍速度，达理论FLOPS 50-73%",
+      "topic": "FlashAttention",
+      "day": "Day 27",
+      "source": "FlashAttention-2论文",
+      "code": ""
+    },
+    {
+      "id": "fc-3-1-01",
+      "front": "PagedAttention如何解决KV Cache内存浪费？",
+      "back": "传统: 预分配max_seq_len连续内存→浪费50-90%\nPagedAttention: KV Cache按block(如16 tokens)管理\n不需要连续物理内存\nBlock Table: 逻辑block→物理block映射\n按需分配→浪费<4%\n类比OS: 虚拟页→物理页",
+      "topic": "PagedAttention",
+      "day": "Day 28",
+      "source": "vLLM论文",
+      "code": ""
+    },
+    {
+      "id": "fc-3-1-02",
+      "front": "PagedAttention的Copy-on-Write机制？",
+      "back": "场景: beam search中多个beam共享prompt KV\n实现: 多个逻辑block指向同一物理block\n  物理block有引用计数(ref_count)\n修改时: 如果ref_count>1，复制物理block\n  新逻辑block指向新物理block\n效果: 避免重复存储相同KV Cache",
+      "topic": "PagedAttention",
+      "day": "Day 28",
+      "source": "vLLM论文",
+      "code": ""
+    },
+    {
+      "id": "fc-3-2-01",
+      "front": "Continuous Batching vs Static Batching？",
+      "back": "Static: 等一个batch全部完成再处理下一个\n  短sequence完成后GPU空闲\nContinuous: iteration级调度\n  每次前向后可添加/移除sequence\n  新请求立即加入，完成的立即移除\n吞吐量提升2-4倍\n也叫inflight batching",
+      "topic": "推理优化",
+      "day": "Day 29",
+      "source": "Orca论文",
+      "code": ""
+    },
+    {
+      "id": "fc-3-2-02",
+      "front": "Prefill和Decode阶段的性能特征？",
+      "back": "Prefill: 处理完整prompt\n  Compute bound(大量GEMM)\n  可充分并行，GPU利用率高\nDecode: 自回归生成1 token/step\n  Memory bound(读KV Cache)\n  计算量小，带宽是瓶颈\n优化方向不同:\n  Prefill→FlashAttention\n  Decode→PagedAttention+batch",
+      "topic": "推理优化",
+      "day": "Day 29",
+      "source": "Sarathi论文",
+      "code": ""
+    },
+    {
+      "id": "fc-3-2-03",
+      "front": "nano-vllm的核心模块和数据流？",
+      "back": "1200行Python实现vLLM核心\n模块: config→cache→block_manager\n  →sequence→scheduler→engine\n数据流:\n  请求→Scheduler调度→Engine执行\n  →PagedAttention计算→输出token\n  →Scheduler判断完成/继续\n学习: 先跑通→逐模块读→对照vLLM",
+      "topic": "推理引擎",
+      "day": "Day 29",
+      "source": "nano-vllm",
+      "code": ""
+    },
+    {
+      "id": "fc-3-3-01",
+      "front": "推理引擎中block_size如何选择？",
+      "back": "block_size = 每个KV block存储的token数\n常用: 16或32\n太小: block table大，管理开销高\n太大: 内部碎片多(最后block浪费)\nKV block大小 = block_size × n_heads × head_dim × 2(KV) × dtype\n启动时: 可用显存/block大小 = 最大block数",
+      "topic": "推理引擎",
+      "day": "Day 30",
+      "source": "nano-vllm config/cache",
+      "code": ""
+    },
+    {
+      "id": "fc-3-3-02",
+      "front": "BlockManager的核心操作？",
+      "back": "allocate: 从free_blocks分配物理block\n  逻辑block→物理block映射\nfree: 减少ref_count，=0时回收\nfork: CoW，新逻辑block指向同一物理block\n  ref_count++\ncopy_on_write: 写时复制物理block\n  ref_count>1时分配新block并复制",
+      "topic": "推理引擎",
+      "day": "Day 30",
+      "source": "nano-vllm block_manager",
+      "code": ""
+    },
+    {
+      "id": "fc-3-4-01",
+      "front": "推理引擎Scheduler的调度策略？",
+      "back": "三个队列:\n  WAITING: 新到的请求\n  RUNNING: 正在生成的sequence\n  SWAPPED: 换出到CPU的sequence\n每次iteration:\n1. 先处理RUNNING的(继续decode)\n2. 有空间则从WAITING加入(prefill)\n3. 显存不足时RUNNING→SWAPPED\n策略: FCFS，保证公平性",
+      "topic": "推理引擎",
+      "day": "Day 31",
+      "source": "nano-vllm scheduler",
+      "code": ""
+    },
+    {
+      "id": "fc-3-4-02",
+      "front": "推理引擎Engine的主循环流程？",
+      "back": "while 有未完成请求:\n1. scheduler.schedule() → 选sequence\n2. 准备输入(token_ids, position_ids)\n3. model.forward() → logits\n4. sample(logits) → next_token\n5. 更新sequence状态\n6. 完成的移出，返回结果\n外部: engine.add_request()添加请求",
+      "topic": "推理引擎",
+      "day": "Day 31",
+      "source": "nano-vllm engine",
+      "code": ""
+    },
+    {
+      "id": "fc-3-5-01",
+      "front": "PagedAttention的计算流程？",
+      "back": "输入: Q(当前token), block_table, KV_cache\n计算:\n  for block_id in block_table:\n    K,V = KV_cache[block_id]  # gather\n    score = Q @ K.T / sqrt(d)\n    # online softmax更新\n    output += softmax_score @ V\n关键: KV不连续存储\n  通过block_table间接索引",
+      "topic": "PagedAttention",
+      "day": "Day 32",
+      "source": "vLLM论文",
+      "code": ""
+    },
+    {
+      "id": "fc-3-5-02",
+      "front": "推理引擎的关键性能指标？",
+      "back": "Throughput: tokens/s(总吞吐)\nLatency: ms/token(单请求延迟)\nTTFT: Time To First Token(首token延迟)\nGPU Util: GPU利用率\nMemory Util: 显存利用率\n权衡: batch大→吞吐高但延迟增\nblock_size大→碎片多但管理开销小",
+      "topic": "推理引擎",
+      "day": "Day 32",
+      "source": "nano-vllm实验",
+      "code": ""
+    },
+    {
+      "id": "fc-3-6-01",
+      "front": "学习推理引擎源码的方法论？",
+      "back": "1. 先跑通简化版(nano-vllm)\n2. 理解核心数据流\n3. 画架构图标注模块关系\n4. 对比不同实现的设计选择\n5. 逐步读生产版(vLLM)\n路径: demo→简化版→生产版\n重点: 数据流>具体代码",
+      "topic": "学习方法",
+      "day": "Day 33",
+      "source": "mini-vllm",
+      "code": ""
+    },
+    {
+      "id": "fc-3-6-02",
+      "front": "推理引擎的核心数据流？",
+      "back": "请求流: Client→Engine.add_request()\n  →Scheduler.waiting队列\n调度流: Scheduler→选sequence→batch\n计算流: Model.forward(batch)→logits\n  →Sampler→next_token\n内存流: BlockManager分配/释放\n  →BlockAllocator→PhysicalBlock\n  →KV Cache GPU显存",
+      "topic": "推理引擎",
+      "day": "Day 33",
+      "source": "nano-vllm总结",
+      "code": ""
+    },
+    {
+      "id": "fc-3-7-01",
+      "front": "PagedAttention CUDA kernel的设计要点？",
+      "back": "每thread block: 处理一个head\n  循环遍历block_table中的KV blocks\n内存: block_table在寄存器/shared mem\n  KV block从global mem加载到shared\n计算: Q@K.T用shared mem\n  softmax用warp-level reduce\n挑战: 非连续KV gather\n  在线softmax跨blocks累积",
+      "topic": "CUDA kernel",
+      "day": "Day 34",
+      "source": "vLLM CUDA kernel",
+      "code": ""
+    },
+    {
+      "id": "fc-3-7-02",
+      "front": "如何阅读vLLM这样的大型项目？",
+      "back": "1. 从API入口开始(LLM类/AsyncLLM)\n2. 跟踪请求处理流程(debug断点)\n3. 理解核心数据结构(Sequence/Block)\n4. 深入关键模块:\n  EngineCore→调度逻辑\n  ModelRunner→模型执行\n  BlockManager→KV Cache管理\n5. 先读tests理解接口契约",
+      "topic": "学习方法",
+      "day": "Day 34",
+      "source": "vLLM",
+      "code": ""
+    },
+    {
+      "id": "fc-3-8-01",
+      "front": "vLLM的两种使用方式？",
+      "back": "离线推理:\n  from vllm import LLM\n  llm = LLM('Qwen/Qwen2-7B')\n  outputs = llm.generate(prompts)\n在线服务:\n  python -m vllm.entrypoints.openai.api_server\n  --model Qwen/Qwen2-7B --port 8000\n  兼容OpenAI API格式\n显存: 7B FP16需~16GB",
+      "topic": "vLLM",
+      "day": "Day 35",
+      "source": "vLLM文档",
+      "code": ""
+    },
+    {
+      "id": "fc-3-8-02",
+      "front": "推理引擎benchmark的关键指标？",
+      "back": "Request Throughput: req/s\nToken Throughput: tokens/s(总)\nLatency P50/P99: 中位/99分位延迟\nTTFT: 首token延迟(用户感知)\nITL: Inter-Token Latency(每token)\nvLLM vs HF: 通常快3-20倍\n原因: PagedAttention+ContinuousBatch",
+      "topic": "性能测试",
+      "day": "Day 35",
+      "source": "vLLM benchmark",
+      "code": ""
+    },
+    {
+      "id": "fc-3-8-03",
+      "front": "vLLM V1 vs V0的架构区别？",
+      "back": "V0: 多进程(ray)，IPC开销大\nV1: 简化单进程架构\n  Processor→EngineCore→OutputProcessor\n  EngineCore: scheduler+model_runner同进程\n  通过ZMQ通信(异步非阻塞)\n优势: 减少IPC开销，更低延迟\n  单机场景不再需要ray",
+      "topic": "vLLM",
+      "day": "Day 35",
+      "source": "vLLM V1设计文档",
+      "code": ""
+    },
+    {
+      "id": "fc-3-9-01",
+      "front": "vLLM V1 Processor的职责？",
+      "back": "输入: 用户原始请求(prompt+params)\n处理:\n1. Tokenize(prompt→token_ids)\n2. 应用Chat Template\n3. 处理多模态输入(图片→tokens)\n4. 参数校验(max_tokens等)\n输出: EngineCoreRequest\n  包含token_ids/sampling_params等\n交给EngineCore调度执行",
+      "topic": "vLLM V1",
+      "day": "Day 36",
+      "source": "vLLM源码",
+      "code": ""
+    },
+    {
+      "id": "fc-3-9-02",
+      "front": "vLLM V1 EngineCore的内部流程？",
+      "back": "独立进程运行:\nwhile True:\n  # 接收新请求(ZMQ)\n  new_reqs = recv_requests()\n  scheduler.add_requests(new_reqs)\n  # 调度\n  batch = scheduler.schedule()\n  # 执行\n  output = model_runner.execute(batch)\n  # 处理输出\n  results = process_output(output)\n  send_results(results)  # ZMQ",
+      "topic": "vLLM V1",
+      "day": "Day 36",
+      "source": "vLLM源码",
+      "code": ""
+    },
+    {
+      "id": "fc-3-10-01",
+      "front": "vLLM Scheduler的Preemption策略？",
+      "back": "显存不足时需要抢占:\nSwap: KV Cache从GPU搬到CPU\n  恢复时搬回GPU(IO开销)\nRecompute: 丢弃KV Cache\n  恢复时重新prefill(计算开销)\n选择: seq短→recompute快\n  seq长→swap划算(避免重算)\nvLLM默认: recompute",
+      "topic": "vLLM",
+      "day": "Day 37",
+      "source": "vLLM Scheduler",
+      "code": ""
+    },
+    {
+      "id": "fc-3-10-02",
+      "front": "Prefix Caching如何工作？",
+      "back": "观察: 很多请求共享相同system prompt\n实现: 用hash标识block内容\n  相同hash→复用物理block(不重算KV)\nRadix Tree: 前缀树存储已缓存的序列\n  新请求查找最长匹配前缀\n  只需计算未匹配部分的KV\n效果: system prompt只算一次\n  TTFT大幅降低",
+      "topic": "vLLM优化",
+      "day": "Day 37",
+      "source": "vLLM BlockManager",
+      "code": ""
+    },
+    {
+      "id": "fc-3-11-01",
+      "front": "推理引擎的停止条件有哪些？",
+      "back": "1. max_tokens: 达到最大生成长度\n2. EOS token: 模型生成了结束token\n3. stop strings: 匹配用户指定的停止字符串\n4. stop token_ids: 匹配指定的token ID\n增量detokenize: 每次只处理新token\n流式输出: 每token返回(SSE)\n  用户感知延迟 = TTFT",
+      "topic": "推理引擎",
+      "day": "Day 38",
+      "source": "vLLM OutputProcessor",
+      "code": ""
+    },
+    {
+      "id": "fc-3-11-02",
+      "front": "CUDA Graph在推理中的作用？",
+      "back": "问题: Python调度kernel有开销(~ms)\n  Decode时每步只处理几十个token\n  Python开销占比很高\nCUDA Graph: 录制计算图一次\n  之后replay(免Python开销)\n限制: 输入shape必须固定\n  → padding到固定batch大小\n效果: decode延迟降低20-40%",
+      "topic": "推理优化",
+      "day": "Day 38",
+      "source": "vLLM ModelRunner",
+      "code": ""
+    },
+    {
+      "id": "fc-3-12-01",
+      "front": "Prefix Caching的性能收益？",
+      "back": "场景: 多请求共享system prompt(如RAG)\n首次: 正常prefill所有token\n后续: 跳过匹配的prefix部分\n  只prefill新增的user部分\nTTFT降低: system prompt越长越明显\n  如2K system prompt→节省80% TTFT\n开启: enable_prefix_caching=True",
+      "topic": "vLLM优化",
+      "day": "Day 39",
+      "source": "vLLM文档",
+      "code": ""
+    },
+    {
+      "id": "fc-3-12-02",
+      "front": "SGLang vs vLLM的主要区别？",
+      "back": "SGLang:\n  RadixAttention(高效prefix cache)\n  SGLang DSL(编程式LLM调用)\n  结构化输出优化(JSON等)\nvLLM:\n  PagedAttention(通用KV管理)\n  OpenAI兼容API\n  更广泛的模型支持\n两者都用: ContinuousBatching+FlashAttn\n选择: 复杂推理→SGLang, 通用服务→vLLM",
+      "topic": "推理引擎",
+      "day": "Day 39",
+      "source": "SGLang论文",
+      "code": ""
+    },
+    {
+      "id": "fc-3-12-03",
+      "front": "vLLM的多GPU并行策略？",
+      "back": "Tensor Parallel(TP):\n  模型参数分到多张GPU\n  AllReduce通信同步中间结果\n  适合单机多卡\nPipeline Parallel(PP):\n  模型层分段到不同GPU\n  流水线执行减少bubble\n  适合跨机器\n常用: 7B用1卡，70B用TP=4-8\nvLLM自动处理TP通信",
+      "topic": "vLLM",
+      "day": "Day 39",
+      "source": "vLLM设计文档",
+      "code": ""
+    },
+    {
+      "id": "fc-3-13-01",
+      "front": "FlashAttention CUDA源码的核心循环结构？",
+      "back": "外层: 遍历Q blocks(每个thread block一个Q块)\n内层: 遍历KV blocks\n  1. 加载K block到shared mem\n  2. S = Q @ K.T (Tensor Core)\n  3. 在线softmax: 更新m_i, l_i\n  4. 加载V block到shared mem\n  5. O += softmax(S) @ V\n  6. rescale之前的累积结果\n反向: 需要recompute S",
+      "topic": "FlashAttention",
+      "day": "Day 40",
+      "source": "FlashAttention-2源码",
+      "code": ""
+    },
+    {
+      "id": "fc-3-13-02",
+      "front": "FlashAttention的tiling维度和内存布局？",
+      "back": "Q: [M, d] 分成 M/BM 个块\n  每个thread block常驻一个Q块\nK: [N, d] 分成 N/BN 个块\nV: [N, d] 分成 N/BN 个块\n  KV块循环加载到shared mem\n内存: Q块在shared mem常驻\n  KV块每次加载一个(循环)\n  O在寄存器累积\n总shared mem ≈ (BM+2*BN)*d*sizeof",
+      "topic": "FlashAttention",
+      "day": "Day 40",
+      "source": "FlashAttention图解",
+      "code": ""
+    },
+    {
+      "id": "fc-3-14-01",
+      "front": "FlashAttention Forward的在线Softmax更新？",
+      "back": "初始: m=-inf, l=0, O=0\n每个KV block:\n  S = Q_block @ K_block.T\n  m_new = max(m_old, rowmax(S))\n  l_new = exp(m_old-m_new)*l_old\n        + rowsum(exp(S-m_new))\n  O = diag(exp(m_old-m_new)/l_new*l_old)*O_old\n    + exp(S-m_new)/l_new @ V_block\n保存: lse = m + log(l) (反向用)",
+      "topic": "FlashAttention",
+      "day": "Day 41",
+      "source": "FlashAttention论文",
+      "code": ""
+    },
+    {
+      "id": "fc-3-14-02",
+      "front": "FlashAttention反向为什么需要recomputation？",
+      "back": "标准反向: 需要存N×N的P=softmax(S)\n  显存O(N²)，N=seq_len很大\nFlashAttention: 前向只存lse\n  反向时从Q,K重算S和P(用时间换空间)\n  dV = P.T @ dO (需要P→重算)\n  dS = P ⊙ (dP - rowsum(dP⊙P))\n显存: O(N)，代价是~25%额外计算",
+      "topic": "FlashAttention",
+      "day": "Day 41",
+      "source": "FlashAttention论文",
+      "code": ""
+    },
+    {
+      "id": "fc-3-15-01",
+      "front": "FlashAttention的性能提升有多大？",
+      "back": "速度: 比标准attention快2-10倍\n  seq_len越长越明显(IO节省越多)\n显存: O(N²)→O(N)\n  4K seq: 从~4GB降到~100MB\nTFLOPS: 达理论峰值50-73%\nFA-2 vs FA-1: 再快~2倍\n关键: 减少HBM访问(IO-aware)",
+      "topic": "FlashAttention",
+      "day": "Day 42",
+      "source": "FlashAttention benchmark",
+      "code": ""
+    },
+    {
+      "id": "fc-3-15-02",
+      "front": "Speculative Decoding的原理和加速比？",
+      "back": "1. 小模型(draft)快速生成K个token\n2. 大模型(target)一次forward验证\n3. 接受前N个正确的(N≤K)\n4. 拒绝的位置用target分布重采样\n加速: 理想K+1倍(实际2-3倍)\n保证: modified rejection sampling\n  输出分布与纯target模型完全一致\n关键: 小模型越准，接受率越高",
+      "topic": "推理优化",
+      "day": "Day 42",
+      "source": "Speculative Decoding论文",
+      "code": ""
+    },
+    {
+      "id": "fc-3-15-03",
+      "front": "Chunked Prefill解决什么问题？",
+      "back": "问题: 长prompt的prefill独占GPU\n  decode请求被饿死(延迟飙升)\n解决: 将prefill分成多个chunk\n  每iteration: 一个prefill chunk + decode batch\n  chunk_size通常512-2048 tokens\n效果: decode延迟降低(不用等)\n  prefill延迟略增(分次完成)\n  总吞吐量基本不变",
+      "topic": "推理优化",
+      "day": "Day 42",
+      "source": "Sarathi论文",
+      "code": ""
+    },
+    {
+      "id": "fc-3-16-01",
+      "front": "vLLM的关键配置参数？",
+      "back": "模型: --tensor-parallel-size N\n内存: --gpu-memory-utilization 0.9\n调度: --max-num-seqs 256\n  --max-num-batched-tokens 8192\n性能: --enable-prefix-caching\n  --enforce-eager (禁用CUDA Graph调试)\n量化: --quantization awq/gptq\n启动: python -m vllm.entrypoints.openai.api_server",
+      "topic": "vLLM配置",
+      "day": "Day 43",
+      "source": "vLLM文档",
+      "code": ""
+    },
+    {
+      "id": "fc-3-16-02",
+      "front": "LLM量化的三种精度和trade-off？",
+      "back": "INT8: 显存减半，精度损失小(<1%)\n  per-channel scale足够\nINT4: 显存1/4，精度损失中(1-3%)\n  需要group quantization\nFP8: Hopper架构支持\n  精度损失极小(0.1-0.3%)\n  训练+推理都可用\n选择: 精度敏感→FP8\n  显存紧张→INT4(AWQ/GPTQ)",
+      "topic": "量化",
+      "day": "Day 43",
+      "source": "量化综述",
+      "code": ""
+    },
+    {
+      "id": "fc-3-17-01",
+      "front": "AWQ量化的核心思想？",
+      "back": "观察: 1%的salient权重影响大部分输出\n  这些权重对应激活值大的通道\n方法: 分析校准数据的激活分布\n  对salient通道用更大的scale(保精度)\n  对其他通道正常量化(压缩)\nvs GPTQ: 无需逐层Hessian重建\n  更快(几分钟 vs 几小时)\n  精度相当或更好",
+      "topic": "量化",
+      "day": "Day 44",
+      "source": "AWQ论文",
+      "code": ""
+    },
+    {
+      "id": "fc-3-17-02",
+      "front": "如何用vLLM部署AWQ量化模型？",
+      "back": "预量化模型:\n  vllm serve TheBloke/Llama-2-7B-AWQ\n  --quantization awq\n自己量化:\n  from awq import AutoAWQForCausalLM\n  model.quantize(tokenizer, quant_config)\n  model.save_quantized('output')\n效果: 7B模型从~14GB→~4GB\n吞吐量提升~2倍(INT4更快)",
+      "topic": "量化部署",
+      "day": "Day 44",
+      "source": "vLLM量化文档",
+      "code": ""
+    },
+    {
+      "id": "fc-3-18-01",
+      "front": "推理引擎的核心技术栈？",
+      "back": "内存: PagedAttention(KV Cache管理)\n调度: Continuous Batching(动态batch)\n计算: FlashAttention(IO-aware attention)\n压缩: AWQ/GPTQ量化(INT4/INT8)\n加速: Speculative Decoding(推测解码)\n优化: CUDA Graph/Prefix Caching\n框架: vLLM/SGLang/TensorRT-LLM",
+      "topic": "总结",
+      "day": "Day 45",
+      "source": "综合资料",
+      "code": ""
+    },
+    {
+      "id": "fc-3-18-02",
+      "front": "推理引擎benchmark应该测试哪些维度？",
+      "back": "变量:\n1. 量化精度: FP16/INT8/INT4/FP8\n2. Batch size: 1/8/32/128\n3. Seq length: 128/512/2K/8K\n4. 功能: prefix caching ON/OFF\n指标: throughput/latency P50,P99/TTFT\n工具: vLLM自带benchmark脚本\n结论: 分析每个变量的影响",
+      "topic": "性能测试",
+      "day": "Day 45",
+      "source": "vLLM benchmark",
+      "code": ""
+    },
+    {
+      "id": "fc-4-1-01",
+      "front": "llama2.c如何用纯C实现Transformer推理？",
+      "back": "~700行C代码\n结构: Config(模型配置)+Weights(权重)+RunState(中间状态)\n权重: mmap加载.bin文件(零拷贝)\n前向: for each layer:\n  rmsnorm→attn(QKV+RoPE+softmax)→rmsnorm→ffn(SwiGLU)\n采样: temperature+top-p/argmax\n无依赖: 纯C，无BLAS库",
+      "topic": "C推理",
+      "day": "Day 46",
+      "source": "llama2.c",
+      "code": ""
+    },
+    {
+      "id": "fc-4-1-02",
+      "front": "llama2.c的性能瓶颈和优化方向？",
+      "back": "瓶颈: matmul占95%+时间(无BLAS)\n优化:\n1. OpenMP多线程(#pragma omp parallel)\n2. SIMD指令(AVX2/AVX-512)\n3. INT8量化(权重1字节)\n4. 分块计算(cache友好)\n编译: gcc -O3 -fopenmp -march=native\n效果: 多线程+SIMD可提升5-10倍",
+      "topic": "C推理",
+      "day": "Day 46",
+      "source": "llama2.c",
+      "code": ""
+    },
+    {
+      "id": "fc-4-2-01",
+      "front": "llm.c和PyTorch训练的区别？",
+      "back": "PyTorch: autograd自动求梯度\n  动态图，Python调度\nllm.c: 手动实现每层backward\n  静态内存分配\n  CUDA kernel手写(除GEMM用cuBLAS)\n优势: 无Python开销\n  内存精确控制\n  理解训练底层原理\n代价: 开发效率低，不灵活",
+      "topic": "C训练",
+      "day": "Day 47",
+      "source": "llm.c",
+      "code": ""
+    },
+    {
+      "id": "fc-4-2-02",
+      "front": "llm.c的手动backward关键点？",
+      "back": "每层手写backward函数:\n  matmul_backward: dW=dY.T@X, dX=dY@W.T\n  layernorm_backward: 链式法则展开\n  gelu_backward: dX=dY*gelu'(X)\n  residual_backward: 直接传递梯度\n内存: 预分配所有梯度buffer\n  避免动态分配(malloc/free)\n优化: 梯度累积+gradient checkpointing",
+      "topic": "C训练",
+      "day": "Day 47",
+      "source": "llm.c",
+      "code": ""
+    },
+    {
+      "id": "fc-4-3-01",
+      "front": "KuiperLLama的核心模块设计？",
+      "back": "Tensor: 多维数组抽象(shape/stride/data)\nBuffer: 内存管理(CPU/CUDA统一接口)\nOperator: 算子抽象(forward/backward)\n  RMSNorm/Attention/FFN/Embedding等\nModel: 组装Operator构成完整模型\nRuntime: 推理引擎(加载→执行→采样)\n构建: CMake + CPU/CUDA后端",
+      "topic": "C++推理框架",
+      "day": "Day 48",
+      "source": "KuiperLLama",
+      "code": ""
+    },
+    {
+      "id": "fc-4-3-02",
+      "front": "为什么用C++写推理框架有价值？",
+      "back": "面试: 展示底层理解(内存管理/算子实现)\n性能: 无Python GIL，精确控制内存\n部署: 嵌入式/移动端/无Python环境\n学习: 理解PyTorch底层做了什么\n  Tensor如何存储/算子如何调度\n简历亮点: '从零实现LLM推理框架'\n  而不是'调用了vLLM的API'",
+      "topic": "C++推理框架",
+      "day": "Day 48",
+      "source": "KuiperLLama",
+      "code": ""
+    },
+    {
+      "id": "fc-4-4-01",
+      "front": "C++推理框架中Tensor和Buffer的关系？",
+      "back": "Buffer: 底层内存管理\n  allocate(size)/free()\n  CPU Buffer: malloc/free\n  CUDA Buffer: cudaMalloc/cudaFree\nTensor: 高层数据抽象\n  shape + stride + dtype + Buffer*\n  shared_ptr<Buffer>引用计数\n  多个Tensor可以共享Buffer(view)\nreshape: 只改shape/stride，不动数据",
+      "topic": "C++推理框架",
+      "day": "Day 49",
+      "source": "KuiperLLama",
+      "code": ""
+    },
+    {
+      "id": "fc-4-4-02",
+      "front": "推理框架中算子的多后端设计？",
+      "back": "基类: Operator(抽象接口)\n  virtual forward(input) = 0\nCPU实现: RMSNormCPU, MatMulCPU\n  用循环或BLAS库\nCUDA实现: RMSNormCUDA, MatMulCUDA\n  自写kernel或cuBLAS\n工厂模式: 根据device选择实现\n  auto op = OpFactory::create('rmsnorm', device)\n好处: 上层代码不关心具体后端",
+      "topic": "C++推理框架",
+      "day": "Day 49",
+      "source": "KuiperLLama",
+      "code": ""
+    },
+    {
+      "id": "fc-4-5-01",
+      "front": "LLM权重文件的常见格式？",
+      "back": "PyTorch .bin: pickle序列化的state_dict\n  加载慢，不安全(pickle可执行代码)\nSafeTensors: HuggingFace标准\n  header(JSON)+data，安全+mmap\nGGUF: llama.cpp格式\n  支持量化(Q4_0/Q5_K_M等)\n  单文件包含模型+tokenizer+config\n加载: mmap零拷贝(最快)\n  或read到Buffer(更通用)",
+      "topic": "模型格式",
+      "day": "Day 50",
+      "source": "KuiperLLama",
+      "code": ""
+    },
+    {
+      "id": "fc-4-5-02",
+      "front": "简单KV Cache vs PagedAttention的区别？",
+      "back": "简单KV Cache:\n  预分配max_seq_len连续内存\n  逐token追加，position递增\n  简单但浪费内存(最大长度预分配)\nPagedAttention:\n  按block(16 tokens)分页管理\n  按需分配，不需要连续内存\n  支持CoW、swap、prefix caching\n选择: 学习/单请求→简单KV Cache\n  生产/多请求→PagedAttention",
+      "topic": "KV Cache",
+      "day": "Day 50",
+      "source": "KuiperLLama",
+      "code": ""
+    },
+    {
+      "id": "fc-4-6-01",
+      "front": "LLM推理的完整流程？",
+      "back": "1. 加载: mmap权重→构建模型\n2. Tokenize: prompt→token_ids\n3. Prefill: 所有prompt tokens一次forward\n  填充KV Cache\n4. Decode循环:\n  while not done:\n    logits = model(last_token, kv_cache)\n    next_token = sample(logits, temp, top_p)\n    if next_token == eos: break\n5. Detokenize: token_ids→文本",
+      "topic": "推理流程",
+      "day": "Day 51",
+      "source": "KuiperLLama",
+      "code": ""
+    },
+    {
+      "id": "fc-4-6-02",
+      "front": "多轮对话如何复用KV Cache？",
+      "back": "第1轮: prefill(system+user1)→generate→assistant1\n  KV Cache保留所有token的KV\n第2轮: 只prefill(user2)→拼接到已有KV Cache\n  →generate→assistant2\n节省: 不需要重新计算历史的KV\n问题: 对话太长→KV Cache超限\n解决: truncate旧KV或sliding window",
+      "topic": "多轮对话",
+      "day": "Day 51",
+      "source": "KuiperLLama",
+      "code": ""
+    },
+    {
+      "id": "fc-4-7-01",
+      "front": "GGUF格式的量化类型怎么选？",
+      "back": "Q4_0: 最快最小，精度损失大\nQ4_K_M: 4bit K-quant，推荐(速度/精度平衡)\nQ5_K_M: 5bit，精度更好，稍慢\nQ8_0: 8bit，精度几乎无损\n命名: Q{bits}_{method}_{size}\n  K=k-means, M=medium\n推荐: 7B用Q4_K_M，70B用Q4_0\n  有空间就用Q5_K_M",
+      "topic": "量化",
+      "day": "Day 52",
+      "source": "llama.cpp",
+      "code": ""
+    },
+    {
+      "id": "fc-4-7-02",
+      "front": "llama.cpp vs vLLM的适用场景？",
+      "back": "llama.cpp:\n  CPU推理(无GPU也能跑)\n  边缘设备/移动端\n  单用户交互\n  GGUF量化格式\nvLLM:\n  GPU推理(高吞吐)\n  服务端多并发\n  PagedAttention+ContinuousBatch\n  HuggingFace模型格式\n选择: 有GPU+多用户→vLLM\n  无GPU/边缘→llama.cpp",
+      "topic": "推理框架对比",
+      "day": "Day 52",
+      "source": "llama.cpp",
+      "code": ""
+    },
+    {
+      "id": "fc-4-8-01",
+      "front": "TensorRT-LLM vs vLLM的trade-off？",
+      "back": "TensorRT-LLM:\n  性能最高(NVIDIA深度优化)\n  自动kernel fusion\n  需要离线编译(耗时)\n  模型支持有限\nvLLM:\n  灵活(Python,易扩展)\n  模型支持广\n  无需编译\n  性能略低10-30%\n选择: 性能极致→TRT-LLM\n  灵活/快速迭代→vLLM",
+      "topic": "推理框架",
+      "day": "Day 53",
+      "source": "TensorRT-LLM",
+      "code": ""
+    },
+    {
+      "id": "fc-4-8-02",
+      "front": "TensorRT-LLM的编译和部署流程？",
+      "back": "1. 下载HuggingFace模型\n2. 转换: python convert_checkpoint.py\n3. 编译: trtllm-build --model_dir ...\n  --dtype float16 --tp_size 1\n  (耗时几分钟到几十分钟)\n4. 推理: python run.py --engine_dir ...\n5. 服务: Triton Inference Server\n注意: engine与GPU型号绑定\n  换GPU需要重新编译",
+      "topic": "TensorRT-LLM",
+      "day": "Day 53",
+      "source": "TRT-LLM快速开始",
+      "code": ""
+    },
+    {
+      "id": "fc-4-9-01",
+      "front": "不同推理框架的选型原则？",
+      "back": "高性能服务: TRT-LLM(NVIDIA深度优化)\n通用服务: vLLM(灵活+高性能)\n复杂推理: SGLang(结构化输出)\n边缘/CPU: llama.cpp(全平台)\n学习/定制: KuiperLLama/nano-vllm\n关键指标: 吞吐量/延迟/灵活性/模型支持\n大原则: 能用vLLM就用vLLM",
+      "topic": "框架选型",
+      "day": "Day 54",
+      "source": "综合对比",
+      "code": ""
+    },
+    {
+      "id": "fc-4-9-02",
+      "front": "如何公平对比推理框架性能？",
+      "back": "控制变量:\n1. 同一模型(如Llama-2-7B)\n2. 同一硬件(如A100 80GB)\n3. 同一精度(FP16/INT4)\n4. 同一输入(prompt长度+生成长度)\n测试:\n  离线: 固定N条请求的总时间\n  在线: 不同并发下的P50/P99延迟\n指标: throughput, latency, TTFT",
+      "topic": "性能对比",
+      "day": "Day 54",
+      "source": "benchmark",
+      "code": ""
+    },
+    {
+      "id": "fc-4-10-01",
+      "front": "Speculative Decoding的接受率取决于什么？",
+      "back": "接受率 = draft和target概率分布的接近程度\n因素:\n1. Draft模型质量(越大越准→接受率越高)\n2. 生成难度(确定性文本→接受率高)\n3. Temperature(低温→确定性高→接受率高)\n典型接受率: 60-90%\n加速比 ≈ K × 接受率 / (1 + draft开销)\n实际: 2-3倍加速",
+      "topic": "Speculative Decoding",
+      "day": "Day 55",
+      "source": "Speculative Decoding论文",
+      "code": ""
+    },
+    {
+      "id": "fc-4-10-02",
+      "front": "Speculative Decoding的三种变体？",
+      "back": "Standard: target+draft两个独立模型\n  需要draft model，接受率高\nMedusa: target+多个head(无draft)\n  head并行预测多个位置\n  无需额外模型，但需要训练head\nEAGLE: target+自回归draft head\n  比Medusa更准(自回归)\n  速度更快(轻量head)\n选择: 有draft→Standard, 无→EAGLE",
+      "topic": "Speculative Decoding",
+      "day": "Day 55",
+      "source": "vLLM文档",
+      "code": ""
+    },
+    {
+      "id": "fc-4-11-01",
+      "front": "MLC-LLM的编译优化原理？",
+      "back": "输入: HuggingFace模型\n编译: TVM将计算图优化\n  1. 算子融合(减少kernel launch)\n  2. 内存优化(减少分配)\n  3. 硬件代码生成(CUDA/Metal等)\n输出: 优化后的可执行模型\n优势: 跨平台(iOS/Android/Web)\n  自动优化不需手写kernel\nvs TRT-LLM: 更通用，非NVIDIA专属",
+      "topic": "编译优化",
+      "day": "Day 56",
+      "source": "MLC-LLM",
+      "code": ""
+    },
+    {
+      "id": "fc-4-11-02",
+      "front": "MLC-LLM支持哪些部署目标？",
+      "back": "GPU: CUDA(NVIDIA), Metal(Apple), Vulkan\nCPU: x86(AVX), ARM(NEON)\n移动端: iOS(Metal), Android(OpenCL/Vulkan)\n浏览器: WebGPU(Chrome/Edge)\n编译: mlc_llm compile → 目标平台库\n特点: 一次开发，多端部署\n  自动优化每个平台的kernel",
+      "topic": "编译优化",
+      "day": "Day 56",
+      "source": "MLC-LLM",
+      "code": ""
+    },
+    {
+      "id": "fc-4-12-01",
+      "front": "FlashAttention-3针对Hopper的优化？",
+      "back": "1. 异步warpgroup: GEMM和softmax overlap\n  不同warpgroup执行不同操作\n2. TMA: 硬件加速tensor内存搬运\n  减少shared mem加载开销\n3. FP8 Tensor Core: 速度2倍于FP16\n4. 低精度accumulation优化\n结果: 比FA-2快1.5-2倍(H100)\n达理论FLOPS 75%+",
+      "topic": "FlashAttention",
+      "day": "Day 57",
+      "source": "FlashAttention-3论文",
+      "code": ""
+    },
+    {
+      "id": "fc-4-12-02",
+      "front": "FlashInfer和FlashAttention的区别？",
+      "back": "FlashAttention: 通用attention加速\n  主要优化训练场景\n  连续KV Cache\nFlashInfer: serving专用\n  原生PagedAttention支持\n  BatchPrefill + BatchDecode分离\n  Prefix Caching优化\n  Cascade attention(多级cache)\n位置: vLLM/SGLang的底层kernel\n  替代FlashAttention用于serving",
+      "topic": "Attention Kernel",
+      "day": "Day 57",
+      "source": "FlashInfer",
+      "code": ""
+    },
+    {
+      "id": "fc-4-13-01",
+      "front": "推理框架层的核心能力？",
+      "back": "底层: C/C++实现Transformer推理\n  Tensor/Buffer/Operator/Model/Runtime\n  KV Cache管理/采样/量化\n生产: 了解vLLM/TRT-LLM/llama.cpp\n  PagedAttention/ContinuousBatch\n  FlashAttention/量化部署\n优化: Speculative Decoding\n  Prefix Caching/CUDA Graph\n简历: KuiperLLama从零实现",
+      "topic": "总结",
+      "day": "Day 58",
+      "source": "综合",
+      "code": ""
+    },
+    {
+      "id": "fc-4-13-02",
+      "front": "推理框架项目怎么写进简历？",
+      "back": "标题: 基于C++的LLM推理框架\n技术栈: C++17/CUDA/CMake\n亮点:\n1. 从零实现Transformer前向推理\n2. KV Cache管理+多轮对话支持\n3. CUDA kernel优化(RMSNorm/Attention)\n4. INT8量化支持\n数据: 7B模型推理速度xx tokens/s\n  比naive实现快xx倍",
+      "topic": "简历",
+      "day": "Day 58",
+      "source": "综合",
+      "code": ""
+    },
+    {
+      "id": "fc-5-1-01",
+      "front": "RLHF三阶段各自的输入输出？",
+      "back": "SFT:\n  输入: base model + 指令数据\n  输出: SFT model(能回答问题)\nRM:\n  输入: SFT model + 偏好对\n  输出: Reward Model(打分0-1)\nPPO:\n  输入: SFT model + RM\n  输出: 对齐后的模型\n  目标: max E[RM(x,y)] - β·KL",
+      "topic": "RLHF",
+      "day": "Day 59",
+      "source": "InstructGPT",
+      "code": ""
+    },
+    {
+      "id": "fc-5-1-02",
+      "front": "trl SFTTrainer的基本用法？",
+      "back": "from trl import SFTTrainer\ntrainer = SFTTrainer(\n  model=model,\n  train_dataset=dataset,  # 'messages'列\n  args=TrainingArguments(\n    output_dir='./sft',\n    per_device_train_batch_size=4,\n    learning_rate=2e-5,\n  ),\n)\ntrainer.train()\n自动处理: chat template, loss mask",
+      "topic": "trl",
+      "day": "Day 59",
+      "source": "trl文档",
+      "code": ""
+    },
+    {
+      "id": "fc-5-2-01",
+      "front": "trl DPOTrainer和PPOTrainer的区别？",
+      "back": "DPOTrainer:\n  输入: model + ref_model + 偏好数据\n  无需RM，直接优化\n  简单稳定，超参少(beta)\nPPOTrainer:\n  输入: model + RM + prompt数据\n  需要在线生成+RM打分\n  更灵活但不稳定\n选择: 有偏好数据→DPO\n  需要在线优化→PPO",
+      "topic": "trl",
+      "day": "Day 60",
+      "source": "trl文档",
+      "code": ""
+    },
+    {
+      "id": "fc-5-2-02",
+      "front": "trl PPOTrainer的训练循环？",
+      "back": "for batch in dataloader:\n  # 1. 生成回答\n  responses = model.generate(batch['prompt'])\n  # 2. RM打分\n  rewards = rm(batch['prompt'], responses)\n  # 3. PPO更新\n  stats = ppo_trainer.step(\n    batch['input_ids'],\n    responses,\n    rewards\n  )\n  # 内部: 计算advantages→clipped update\n四模型: actor+critic+ref+reward",
+      "topic": "trl PPO",
+      "day": "Day 60",
+      "source": "trl文档",
+      "code": ""
+    },
+    {
+      "id": "fc-5-3-01",
+      "front": "veRL和trl的主要区别？",
+      "back": "veRL:\n  大规模分布式(Ray)\n  Actor-Learner分离(GPU利用高)\n  高效rollout(vLLM后端)\n  字节内部验证\ntrl:\n  单机为主(简单)\n  HuggingFace生态集成\n  学习友好\n选择: 研究/小规模→trl\n  生产/大规模→veRL/OpenRLHF",
+      "topic": "RL训练框架",
+      "day": "Day 61",
+      "source": "veRL论文",
+      "code": ""
+    },
+    {
+      "id": "fc-5-3-02",
+      "front": "veRL的部署架构？",
+      "back": "基于Ray分布式:\n  Ray Driver: 协调全局训练\n  Actor Workers: 模型参数+推理\n  Learner Workers: 梯度计算+更新\n  Rollout Workers: vLLM生成\n  Reward Workers: RM打分\n通信: NCCL(GPU间) + Ray(进程间)\n配置: YAML定义分布式策略\n扩展: 单机→多机无缝扩展",
+      "topic": "veRL",
+      "day": "Day 61",
+      "source": "veRL",
+      "code": ""
+    },
+    {
+      "id": "fc-5-4-01",
+      "front": "为什么用GSM8K做RL训练验证？",
+      "back": "优点:\n1. 答案可自动验证(数值对比)\n2. 数据集小(8.5K)训练快\n3. 推理链清晰(一步步计算)\n4. RL信号明确(对/错)\nReward: 正确+1, 错误-1\n  格式正确+0.5\n基线: SFT~30% → PPO~50%+\n广泛用于验证RLHF pipeline",
+      "topic": "RL训练",
+      "day": "Day 62",
+      "source": "veRL GSM8K",
+      "code": ""
+    },
+    {
+      "id": "fc-5-4-02",
+      "front": "RL训练中Actor-Critic分离的好处？",
+      "back": "传统: Actor+Critic在同一GPU\n  显存: 2倍模型大小\n分离: Actor和Critic在不同GPU\n  每张GPU只需1倍模型大小\nRollout分离: 生成和训练用不同副本\n  生成时不需要梯度(省显存)\n  训练时不需要生成(专注计算)\n双缓冲: overlap生成和训练\n  GPU利用率接近100%",
+      "topic": "分布式RL",
+      "day": "Day 62",
+      "source": "veRL",
+      "code": ""
+    },
+    {
+      "id": "fc-5-5-01",
+      "front": "veRL的Worker架构设计？",
+      "back": "基于Ray Actor:\nActorWorker: Actor模型+forward/backward\nCriticWorker: Critic模型+value估计\nRolloutWorker: vLLM推理引擎+生成\nRewardWorker: RM模型+打分\n通信:\n  GPU间: NCCL AllReduce(快)\n  Worker间: Ray ObjectStore\n扩展: 增加Worker数=增加GPU利用",
+      "topic": "veRL",
+      "day": "Day 63",
+      "source": "veRL Worker",
+      "code": ""
+    },
+    {
+      "id": "fc-5-5-02",
+      "front": "RL训练中Rollout的效率为什么重要？",
+      "back": "PPO训练循环:\n  rollout(生成)→reward(打分)→update(训练)\n  rollout占总时间50-70%\n  是性能瓶颈!\n优化: 用vLLM做rollout\n  PagedAttention减少显存浪费\n  ContinuousBatching提高吞吐\n  比纯HF generate快3-10倍\n效果: 总训练时间减少40-60%",
+      "topic": "RL训练",
+      "day": "Day 63",
+      "source": "veRL Rollout",
+      "code": ""
+    },
+    {
+      "id": "fc-5-6-01",
+      "front": "PPO训练的关键超参数？",
+      "back": "clip_range=0.2: 策略更新裁剪范围\nvalue_clip=0.2: value函数裁剪\ngae_lambda=0.95: GAE的λ参数\n  0→MC估计, 1→TD估计\ngamma=1.0: 折扣因子(LLM通常=1)\nkl_coeff=0.02: KL惩罚系数\nppo_epochs=4: 每batch更新次数\nmini_batch_size: 内部mini-batch大小",
+      "topic": "PPO超参",
+      "day": "Day 64",
+      "source": "veRL Trainer",
+      "code": ""
+    },
+    {
+      "id": "fc-5-6-02",
+      "front": "RL训练和SFT的数据需求区别？",
+      "back": "SFT: 需要(prompt, response)对\n  高质量标注数据(贵)\n  数据可重复使用(多epoch)\nRL: 只需prompt(无需标注回答)\n  模型自己生成→RM评估\n  通常只用一次(on-policy)\n  需要更多prompt(数万-数十万)\nRL数据成本: 标注更低\n  但compute成本更高(在线生成)",
+      "topic": "RL数据",
+      "day": "Day 64",
+      "source": "veRL",
+      "code": ""
+    },
+    {
+      "id": "fc-5-7-01",
+      "front": "GRPO比PPO省多少资源？",
+      "back": "PPO: Actor+Critic+Ref+RM = 4个模型\n  显存: 约4倍模型大小\nGRPO: Actor+Ref+RM = 3个模型\n  省掉Critic(和Actor一样大)\n  显存: 约3倍模型大小\n额外: GRPO需要每prompt采样K=8次\n  rollout计算量增加8倍\n  但总体仍比PPO快(省Critic训练)",
+      "topic": "GRPO",
+      "day": "Day 65",
+      "source": "veRL GRPO",
+      "code": ""
+    },
+    {
+      "id": "fc-5-7-02",
+      "front": "DeepSeek-R1的关键发现？",
+      "back": "发现: 纯RL(无SFT)能涌现CoT推理\n方法: base model + GRPO\n  reward=答案正确性\n  不提供CoT标注数据\n涌现: 训练中自发出现:\n  '让我一步步思考...'\n  长推理链(>100 tokens)\n意义: RL优化压力足够时\n  模型自己学会结构化推理\n  不需要人工标注的推理过程",
+      "topic": "DeepSeek-R1",
+      "day": "Day 65",
+      "source": "DeepSeek-R1论文",
+      "code": ""
+    },
+    {
+      "id": "fc-5-8-01",
+      "front": "OpenRLHF的模块化设计？",
+      "back": "openrlhf/\n  trainer/: PPO/DPO/GRPO训练器\n  models/: Actor/Critic/RM模型封装\n  datasets/: 数据处理\n  utils/: DeepSpeed/logging工具\nexamples/:\n  train_ppo.py: PPO训练示例\n  train_dpo.py: DPO训练示例\n依赖: Ray(分布式)+DeepSpeed(训练)\n  +vLLM(rollout)",
+      "topic": "OpenRLHF",
+      "day": "Day 66",
+      "source": "OpenRLHF",
+      "code": ""
+    },
+    {
+      "id": "fc-5-8-02",
+      "front": "PPO训练不收敛时怎么调试？",
+      "back": "检查清单:\n1. RM质量: 人工看几个(chosen,rejected)\n  RM分数是否合理？\n2. KL太大: 降低lr/增大kl_coeff\n  模型偏离ref太远\n3. KL太小: 提高lr/减小kl_coeff\n  模型几乎没学\n4. Reward hacking: reward高但输出质量差\n  RM被exploit了→改进RM\n5. 学习率: RL的lr通常比SFT小10倍",
+      "topic": "RL调试",
+      "day": "Day 66",
+      "source": "OpenRLHF",
+      "code": ""
+    },
+    {
+      "id": "fc-5-9-01",
+      "front": "veRL和OpenRLHF怎么选？",
+      "back": "veRL:\n  Actor-Learner分离(GPU利用高)\n  字节验证(大规模稳定)\n  适合生产部署\nOpenRLHF:\n  模块化(易于修改)\n  社区活跃(更多模型支持)\n  文档友好(适合学习)\n共同: Ray+vLLM+PPO/GRPO\n建议: 学习→OpenRLHF\n  生产→veRL",
+      "topic": "RL框架对比",
+      "day": "Day 67",
+      "source": "综合对比",
+      "code": ""
+    },
+    {
+      "id": "fc-5-9-02",
+      "front": "分布式RL训练的并行策略？",
+      "back": "三个维度:\n1. 数据并行: N个Worker各rollout一部分\n  汇总后统一计算advantage\n2. 模型并行: 大模型跨GPU\n  TP(tensor)在每个Worker内\n  PP(pipeline)跨Worker\n3. 流水线: rollout和training overlap\n  一组GPU做rollout时\n  另一组做training\n规模: 数据并行=Worker数×模型并行=GPU/Worker",
+      "topic": "分布式RL",
+      "day": "Day 67",
+      "source": "veRL论文",
+      "code": ""
+    },
+    {
+      "id": "fc-5-10-01",
+      "front": "Reward Model的训练方法？",
+      "back": "架构: LLM backbone + 标量输出头\n  输入: (prompt, response) → 标量r\n数据: 偏好对(chosen, rejected)\nLoss: -log(σ(r_chosen - r_rejected))\n  Bradley-Terry排序模型\n训练: 和SFT类似的流程\n  lr=1e-5, batch_size=32\n注意: RM质量决定了RLHF上限\n  垃圾RM → PPO学到垃圾策略",
+      "topic": "Reward Model",
+      "day": "Day 68",
+      "source": "InstructGPT",
+      "code": ""
+    },
+    {
+      "id": "fc-5-10-02",
+      "front": "Reward Hacking是什么？如何缓解？",
+      "back": "现象: PPO学会exploit RM漏洞\n  RM分数高但实际质量差\n  如: 生成冗长重复的内容\n原因: RM不完美，有盲点\n缓解:\n1. KL约束(不偏离ref太远)\n2. 多个RM取平均(ensemble)\n3. RM定期更新(对抗训练)\n4. 人工评估监控(定期采样)\n5. 限制训练步数(early stop)",
+      "topic": "Reward Model",
+      "day": "Day 68",
+      "source": "综合",
+      "code": ""
+    },
+    {
+      "id": "fc-5-11-01",
+      "front": "大规模RLHF训练面临哪些挑战？",
+      "back": "显存: 70B PPO需4×70B参数\n  最少8×A100 80GB\n通信: 多节点AllReduce\n  需NVLink/InfiniBand\n稳定性: 大模型更易崩溃\n  gradient clipping, lr warmup\n效率: rollout占时70%\n  需高效推理引擎(vLLM)\n解决: GRPO(省Critic)\n  DeepSpeed ZeRO(显存优化)\n  gradient checkpointing",
+      "topic": "大规模RL",
+      "day": "Day 69",
+      "source": "Scaling RLHF",
+      "code": ""
+    },
+    {
+      "id": "fc-5-11-02",
+      "front": "DeepSeek的MoE训练有什么特别？",
+      "back": "专家并行(EP): MoE的Expert分到不同GPU\n  每GPU只持有部分Expert\n  All2All通信路由token到对应Expert\n辅助loss: 负载均衡+路由多样性\n  防止Expert退化(都选同几个)\nMoE+TP+PP+EP: 四维并行\n  DeepSeek-V3: 671B参数\n  激活37B(Top-2 Expert)\n  训练成本远低于等效Dense模型",
+      "topic": "DeepSeek",
+      "day": "Day 69",
+      "source": "unlock-deepseek",
+      "code": ""
+    },
+    {
+      "id": "fc-5-12-01",
+      "front": "DeepSpeed ZeRO三个Stage分别优化什么？",
+      "back": "ZeRO-1: Optimizer State分片\n  每GPU只存1/N的优化器状态\n  显存节省4倍(AdamW状态)\nZeRO-2: +Gradient分片\n  额外节省梯度显存\nZeRO-3: +Parameter分片\n  参数也分到N张GPU\n  显存节省N倍(但通信多)\n选择: ZeRO-2最常用(平衡)\n  ZeRO-3用于超大模型",
+      "topic": "DeepSpeed",
+      "day": "Day 70",
+      "source": "DeepSpeed",
+      "code": ""
+    },
+    {
+      "id": "fc-5-12-02",
+      "front": "DeepSpeed在RL训练中的角色？",
+      "back": "训练侧: DeepSpeed包装Actor和Critic\n  ZeRO优化显存\n  bf16混合精度\n  gradient checkpointing\nRollout侧: vLLM独立处理\n  不需要DeepSpeed(纯推理)\n参数同步: training→rollout\n  每次update后同步最新参数\n配置选择:\n  GPU够→ZeRO-2(快)\n  GPU紧→ZeRO-3+offload(慢但能跑)",
+      "topic": "DeepSpeed+RL",
+      "day": "Day 70",
+      "source": "veRL",
+      "code": ""
+    },
+    {
+      "id": "fc-5-13-01",
+      "front": "RL训练的时间breakdown？",
+      "back": "典型分布:\n  Rollout: 60%(生成回答)\n  Reward: 10%(RM打分)\n  Training: 25%(PPO更新)\n  通信: 5%(参数同步)\n优化优先级:\n1. Rollout: vLLM加速(最大杠杆)\n2. Training: DeepSpeed+bf16\n3. Overlap: rollout和training并行\nGRPO: 省training(无Critic)\n  但rollout×K(多次采样)",
+      "topic": "RL性能",
+      "day": "Day 71",
+      "source": "veRL",
+      "code": ""
+    },
+    {
+      "id": "fc-5-13-02",
+      "front": "RL训练pipeline的关键经验？",
+      "back": "1. RM质量是RLHF上限\n  花时间做好RM\n2. KL约束必须有\n  防止偏离ref太远\n3. 监控reward hacking\n  定期人工检查输出\n4. 从DPO开始\n  简单验证pipeline正确\n5. 有需要再上PPO/GRPO\n  更灵活但更复杂\n6. 评估用人工+自动\n  自动指标可能被game",
+      "topic": "RL总结",
+      "day": "Day 71",
+      "source": "综合",
+      "code": ""
+    },
+    {
+      "id": "fc-5-14-01",
+      "front": "RL训练层的核心能力清单？",
+      "back": "算法: SFT→DPO→PPO→GRPO\n  理解每个算法的公式和代码\n框架: trl(学习)/veRL(生产)/OpenRLHF\n  能跑通PPO/GRPO训练\n分布式: Ray+DeepSpeed+vLLM\n  Actor-Critic分离架构\n工程: RM训练、reward设计\n  reward hacking监控\n  大规模训练调优",
+      "topic": "总结",
+      "day": "Day 72",
+      "source": "综合",
+      "code": ""
+    },
+    {
+      "id": "fc-5-14-02",
+      "front": "如何设计自定义Reward函数？",
+      "back": "类型:\n1. RM-based: 通用质量评估\n2. 规则-based: 代码正确/格式检查\n3. 混合: 加权组合多个信号\n设计原则:\n  明确+可度量\n  避免被hack(多维度)\n  正负奖励平衡\n示例: 数学题\n  答案正确+1, 错误-1\n  格式正确+0.5\n  过长惩罚-0.1*excess_len",
+      "topic": "Reward设计",
+      "day": "Day 72",
+      "source": "veRL",
+      "code": ""
+    },
+    {
+      "id": "fc-6-1-01",
+      "front": "国产GPU的主要厂商和特点？",
+      "back": "华为昇腾: CANN生态，910B/910C\n  最成熟，MindSpore框架\n海光DCU: 兼容AMD ROCm/HIP\n  CUDA代码迁移最容易\n寒武纪: MLU370，BANG语言\n  推理芯片为主\n摩尔线程: MTT S80，兼容CUDA\n  消费级+数据中心\n天数智芯: 训练芯片\n共同挑战: 软件生态不成熟",
+      "topic": "国产GPU",
+      "day": "Day 73",
+      "source": "国产GPU生态",
+      "code": ""
+    },
+    {
+      "id": "fc-6-1-02",
+      "front": "CUDA、HIP、CANN的关系和迁移难度？",
+      "back": "CUDA(NVIDIA): 原生生态，最成熟\nHIP(AMD/海光):\n  API与CUDA 1:1对应\n  hipify工具自动转换\n  迁移工作量: ~1周(小项目)\nCANN(华为昇腾):\n  不同的编程模型(AscendCL)\n  需要重写kernel\n  迁移工作量: ~1-3月\n策略: 先HIP(快)→再CANN(深)",
+      "topic": "GPU编程接口",
+      "day": "Day 73",
+      "source": "综合",
+      "code": ""
+    },
+    {
+      "id": "fc-6-2-01",
+      "front": "CANN的软件栈层次？",
+      "back": "应用层: MindSpore/PyTorch\n  ↓ 框架适配\nAscendCL: 编程接口(类似CUDA Runtime)\n  设备管理/内存/流/事件\n  ↓\nGE(Graph Engine): 图编译优化\n  算子融合/内存优化\n  ↓\nTBE(Tensor Boost Engine): 算子开发\n  自定义算子用TBE编写\n  类似CUDA kernel\n  ↓\n昇腾NPU硬件(达芬奇架构)",
+      "topic": "CANN",
+      "day": "Day 74",
+      "source": "CANN文档",
+      "code": ""
+    },
+    {
+      "id": "fc-6-2-02",
+      "front": "昇腾910B vs A100的关键参数？",
+      "back": "昇腾910B:\n  FP16: ~256 TFLOPS\n  HBM: 32/64GB, ~1.2TB/s\n  达芬奇架构(Cube+Vector)\nA100:\n  FP16: 312 TFLOPS\n  HBM2e: 80GB, 2TB/s\n  Ampere架构(Tensor Core)\n差距: 硬件~80%性能\n  软件生态差距更大\n  CANN vs CUDA成熟度",
+      "topic": "昇腾",
+      "day": "Day 74",
+      "source": "昇腾规格",
+      "code": ""
+    },
+    {
+      "id": "fc-6-3-01",
+      "front": "AscendCL和CUDA API的对应关系？",
+      "back": "初始化: aclInit() ↔ cudaInit()\n设备: aclrtSetDevice() ↔ cudaSetDevice()\n内存: aclrtMalloc() ↔ cudaMalloc()\n拷贝: aclrtMemcpy() ↔ cudaMemcpy()\n流: aclrtCreateStream() ↔ cudaStreamCreate()\n算子: aclnnXxx() ↔ cudaLaunchKernel()\n同步: aclrtSynchronizeStream()\n差异: CANN没有直接写kernel的接口\n  需要通过TBE/AICPU算子框架",
+      "topic": "AscendCL",
+      "day": "Day 75",
+      "source": "AscendCL编程指南",
+      "code": ""
+    },
+    {
+      "id": "fc-6-3-02",
+      "front": "昇腾自定义算子的开发方式？",
+      "back": "方式1: TBE(Tensor Boost Engine)\n  基于TVM的DSL描述\n  自动生成NPU代码\n  适合标准算子\n方式2: Ascend C(推荐)\n  类C++语法\n  更灵活，更接近CUDA体验\n  可以精细控制AI Core\n流程: 开发→编译→注册→框架调用\n对比: 类似CUDA写kernel\n  但NPU架构不同，需要适配",
+      "topic": "昇腾算子",
+      "day": "Day 75",
+      "source": "Ascend C文档",
+      "code": ""
+    },
+    {
+      "id": "fc-6-4-01",
+      "front": "海光DCU的适配策略？",
+      "back": "海光DCU兼容AMD ROCm\n迁移路径: CUDA → HIP\n工具: hipify-perl/hipify-clang\n  自动转换90%+ CUDA代码\n手动修改:\n  NVIDIA特有API(cuDNN等)\n  内联PTX汇编\n  Tensor Core相关代码\n库替换: cuBLAS→rocBLAS\n  cuDNN→MIOpen\n  cuFFT→rocFFT\n工作量: 通常1-2周搞定",
+      "topic": "海光DCU",
+      "day": "Day 76",
+      "source": "ROCm文档",
+      "code": ""
+    },
+    {
+      "id": "fc-6-4-02",
+      "front": "CUDA到HIP的自动转换流程？",
+      "back": "1. hipify-perl/clang转换源码\n  cudaMalloc → hipMalloc\n  cudaMemcpy → hipMemcpy\n  __global__ → __global__ (不变)\n  <<<grid,block>>> → hipLaunchKernelGGL\n2. 手动修改不支持的API\n  cooperative_groups等\n3. 替换库: cuBLAS→rocBLAS\n4. 编译: hipcc代替nvcc\n5. 验证: 对比CUDA输出\n覆盖率: 自动转换90%+",
+      "topic": "HIP迁移",
+      "day": "Day 76",
+      "source": "hipify文档",
+      "code": ""
+    },
+    {
+      "id": "fc-6-5-01",
+      "front": "MindSpore和PyTorch的主要区别？",
+      "back": "MindSpore:\n  原生昇腾支持(一等公民)\n  图模式(编译优化,快)+ Pynative(动态,调试)\n  自动并行(配置策略即可)\n  数据处理: MindDataset\nPyTorch:\n  原生CUDA支持\n  动态图(灵活)\n  手动并行(DDP/FSDP)\n  数据: DataLoader\n迁移: API类似，概念对应\n  约1-2周适应",
+      "topic": "MindSpore",
+      "day": "Day 77",
+      "source": "MindSpore文档",
+      "code": ""
+    },
+    {
+      "id": "fc-6-5-02",
+      "front": "如何在昇腾上训练大模型？",
+      "back": "方式1: MindFormers(推荐)\n  已适配LLaMA/Qwen/ChatGLM等\n  配置文件指定并行策略\n  一键启动: run_mindformer.py\n方式2: PyTorch + torch_npu\n  华为提供torch_npu插件\n  PyTorch代码最小修改\n  .to('npu:0')代替.to('cuda:0')\n方式3: MindSpore原生开发\n  性能最优但迁移成本最大",
+      "topic": "昇腾训练",
+      "day": "Day 77",
+      "source": "MindFormers",
+      "code": ""
+    },
+    {
+      "id": "fc-6-6-01",
+      "front": "vLLM如何支持多种GPU？",
+      "back": "抽象层: Platform接口\n  get_device_name()\n  attention_backend()\n  memory_allocator()\n实现:\n  CUDA: FlashAttention/FlashInfer\n  ROCm: CK(Composable Kernel)\n  昇腾: torch_npu + 自定义kernel\n安装:\n  CUDA: pip install vllm\n  ROCm: pip install vllm-rocm\n  昇腾: 从源码编译+torch_npu",
+      "topic": "多硬件支持",
+      "day": "Day 78",
+      "source": "vLLM文档",
+      "code": ""
+    },
+    {
+      "id": "fc-6-6-02",
+      "front": "torch_npu的使用方式？",
+      "back": "import torch\nimport torch_npu  # 加载昇腾支持\n\ndevice = torch.device('npu:0')\nx = torch.randn(10, 10).to(device)\ny = torch.matmul(x, x)  # 在NPU上执行\n\n# 模型迁移\nmodel = model.to('npu:0')\n# 训练代码基本不变\n\n限制: 部分算子未适配\n  会fallback到CPU(很慢)\n  需要检查算子覆盖率",
+      "topic": "torch_npu",
+      "day": "Day 78",
+      "source": "torch_npu",
+      "code": ""
+    },
+    {
+      "id": "fc-6-7-01",
+      "front": "在国产GPU上部署LLM的挑战？",
+      "back": "算子: 部分CUDA算子没有NPU版本\n  FlashAttention需要重写\n  自定义kernel需要Ascend C\n精度: BF16/FP16支持程度不同\n  可能有精度对齐问题\n性能: 通常是CUDA的60-80%\n  优化空间大\n生态: 缺少Triton等高级工具\n  kernel优化更依赖手工\n策略: 先跑通→再优化→再量产",
+      "topic": "国产GPU部署",
+      "day": "Day 79",
+      "source": "昇腾",
+      "code": ""
+    },
+    {
+      "id": "fc-6-7-02",
+      "front": "国产GPU性能对比NVIDIA的典型结果？",
+      "back": "昇腾910B vs A100:\n  推理throughput: 60-80%\n  训练throughput: 50-70%\n  主要差距: 软件优化\n海光DCU vs A100:\n  推理: 50-70%\n  训练: 40-60%\n  HIP迁移容易但优化不足\n优化方向:\n  attention kernel优化(最大)\n  内存管理优化\n  通信优化(多卡)\n趋势: 每代产品差距在缩小",
+      "topic": "性能对比",
+      "day": "Day 79",
+      "source": "性能基准",
+      "code": ""
+    },
+    {
+      "id": "fc-6-8-01",
+      "front": "国产GPU适配的常见问题和解决方法？",
+      "back": "算子缺失: Ascend C自定义实现\n精度不齐: 逐层对比输出\n  找到发散点→修正kernel\n性能回退: profile找瓶颈\n  通常是memory bound算子\n驱动兼容: 版本严格匹配\n  CANN/驱动/固件三件套\n调试流程:\n1. 先跑通(允许精度差)\n2. 精度对齐(逐层对比)\n3. 性能优化(profile→优化)",
+      "topic": "适配",
+      "day": "Day 80",
+      "source": "昇腾适配指南",
+      "code": ""
+    },
+    {
+      "id": "fc-6-8-02",
+      "front": "CUDA kernel迁移到昇腾的关键步骤？",
+      "back": "1. 理解NPU架构差异\n  AI Core vs CUDA Core\n  Cube Unit(矩阵) vs Tensor Core\n2. 选择开发方式\n  Ascend C(最灵活)\n  TBE(自动生成)\n3. 重写kernel\n  数据搬运: global→local(类似shared)\n  计算: 使用Cube/Vector单元\n4. 精度验证: 对比CUDA输出\n5. 性能调优: profile+优化tiling",
+      "topic": "kernel迁移",
+      "day": "Day 80",
+      "source": "Ascend C",
+      "code": ""
+    },
+    {
+      "id": "fc-6-9-01",
+      "front": "编译器方法(TVM/MLC)对多硬件适配的价值？",
+      "back": "传统: 每个硬件手写kernel\n  CUDA→手工→HIP→手工→CANN\n  N个硬件×M个算子 = N*M工作量\n编译器: TVM统一中间表示\n  一次编写→自动生成各硬件代码\n  工作量: M个算子(不乘N)\n权衡: 性能90% vs 手写95%+\n  开发效率提升5-10倍\n趋势: 编译器方法越来越主流",
+      "topic": "编译器",
+      "day": "Day 81",
+      "source": "TVM/MLC-LLM",
+      "code": ""
+    },
+    {
+      "id": "fc-6-9-02",
+      "front": "寒武纪BANG和CUDA的区别？",
+      "back": "BANG: 寒武纪MLU编程语言\n  类C语法，面向MLU硬件\n  向量编程为主(SIMD)\nCUDA: NVIDIA GPU编程\n  thread/warp/block层次\n  标量+向量混合\n差异:\n  BANG没有shared memory概念\n  内存模型不同(NRAM/WRAM)\n  编译: cncc(类似nvcc)\n生态: CNToolkit(类似CUDA Toolkit)\n  成熟度: 约CUDA的20%",
+      "topic": "寒武纪",
+      "day": "Day 81",
+      "source": "寒武纪文档",
+      "code": ""
+    },
+    {
+      "id": "fc-6-10-01",
+      "front": "国产GPU部署LLM的标准流程？",
+      "back": "1. 环境: 安装驱动+CANN/ROCm+框架\n2. 模型: 转换格式(如torch→mindspore)\n3. 适配: 替换不支持的算子\n4. 验证: 功能正确性(输出对比)\n5. 精度: 数值对齐(误差<1e-3)\n6. 性能: profile+kernel优化\n7. 服务: 部署API服务\n工具: self-llm教程(step by step)",
+      "topic": "部署流程",
+      "day": "Day 82",
+      "source": "self-llm",
+      "code": ""
+    },
+    {
+      "id": "fc-6-10-02",
+      "front": "国产GPU适配经验的简历价值？",
+      "back": "稀缺性: 有CUDA+国产GPU经验的人很少\n岗位: AI Infra/GPU适配/异构计算\n公司: 华为/昇腾生态/海光/寒武纪\n  大厂AI平台团队\n加分项:\n  CUDA kernel开发经验\n  至少一种国产GPU适配\n  推理引擎(vLLM)适配\n  性能对比报告\n竞争力: GPU编程+国产适配=稀缺组合",
+      "topic": "求职",
+      "day": "Day 82",
+      "source": "综合",
+      "code": ""
+    },
+    {
+      "id": "fc-6-11-01",
+      "front": "不同场景如何选择国产GPU？",
+      "back": "训练(大规模):\n  首选: 昇腾910B/C(最成熟)\n  备选: 海光DCU(HIP兼容)\n推理(服务端):\n  昇腾310P(低功耗高效)\n  寒武纪MLU370(推理专用)\n边缘:\n  昇腾310(嵌入式)\n评估: 性能>生态>价格>供货\n现实: 大多数场景选昇腾\n  因为生态最成熟",
+      "topic": "选型",
+      "day": "Day 83",
+      "source": "综合",
+      "code": ""
+    },
+    {
+      "id": "fc-6-11-02",
+      "front": "国产GPU LLM推理Demo怎么做？",
+      "back": "最小可行Demo:\n1. 安装: CANN+torch_npu\n2. 加载: model.to('npu:0')\n3. 推理: model.generate(input)\n4. API: FastAPI包装\n5. 性能: 记录throughput/latency\n6. 对比: vs CUDA版本的性能\n简历: '在昇腾910B上部署7B模型\n  推理速度达到A100的75%\n  解决了X个算子适配问题'",
+      "topic": "Demo",
+      "day": "Day 83",
+      "source": "综合",
+      "code": ""
+    },
+    {
+      "id": "fc-6-12-01",
+      "front": "84天学习计划的六层能力模型？",
+      "back": "L1: LLM原理(MiniMind全流程)\nL2: GPU编程(CUDA/Triton kernel)\nL3: 推理引擎(nano-vllm→vLLM)\nL4: C++框架(KuiperLLama)\nL5: RL训练(PPO/GRPO/veRL)\nL6: 国产GPU(昇腾/海光适配)\n竞争力: 全栈AI Infra\n  从模型算法到GPU硬件\n  从原理理解到生产部署",
+      "topic": "总结",
+      "day": "Day 84",
+      "source": "综合",
+      "code": ""
+    },
+    {
+      "id": "fc-6-12-02",
+      "front": "AI Infra面试的六大核心问题？",
+      "back": "1. Transformer: 公式+代码级理解\n2. CUDA/Triton: 写过什么kernel\n3. 推理: PagedAttention+ContinuousBatch\n4. KV Cache: 计算公式+优化方法\n5. RL: PPO vs DPO vs GRPO\n6. 国产GPU: CUDA→CANN/HIP迁移\n准备: 每个问题能讲30分钟\n  有代码+数据支撑",
+      "topic": "面试",
+      "day": "Day 84",
+      "source": "综合",
+      "code": ""
+    },
+    {
+      "id": "fc-6-12-03",
+      "front": "Day 85+的持续学习方向？",
+      "back": "推理进阶:\n  SGLang/FlashInfer/FlashAttention-3\n  Speculative Decoding变体\n训练进阶:\n  Megatron-LM/Ring Attention\n  Sequence Parallel/Context Parallel\n开源贡献:\n  给vLLM/SGLang/veRL提PR\n  从小bug fix开始\n论文:\n  每周精读1篇MLSys顶会论文\n社区: GitHub Trending+Twitter/X",
+      "topic": "持续学习",
+      "day": "Day 84",
+      "source": "综合",
+      "code": ""
+    },
+    {
+      "id": "fc-1-2-04",
+      "front": "GQA(Grouped Query Attention)是什么？\n和MHA、MQA的区别？",
+      "back": "MHA: n_heads个Q头，n_heads个KV头(标准)\nMQA: n_heads个Q头，1个KV头(极端压缩)\nGQA: n_heads个Q头，n_kv_heads个KV头(折中)\n\nMiniMind: n_heads=16, n_kv_heads=8 → 每2个Q头共享1组KV\n优势: KV Cache内存减半，推理速度提升，质量损失很小",
+      "topic": "Attention",
+      "day": "Day 2",
+      "source": "minimind/model/model.py - Attention类"
+    }
+  ]
+}

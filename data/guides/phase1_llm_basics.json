@@ -1,0 +1,557 @@
+{
+  "phase_id": 1,
+  "enrichments": {
+    "1-1-1": {
+      "key_points": [
+        "Self-Attention公式: Attention(Q,K,V) = softmax(QK^T / sqrt(d_k)) * V，除以sqrt(d_k)防止点积过大导致softmax梯度消失",
+        "Multi-Head: 将d_model拆成h个头，每个头独立计算Attention后concat，公式 MultiHead = Concat(head_1..h) · W_O",
+        "Position Encoding: 原始Transformer用sin/cos固定编码，现代LLM用RoPE旋转位置编码替代",
+        "Transformer Block = LayerNorm + Multi-Head Attention + LayerNorm + FFN，残差连接贯穿始终"
+      ],
+      "resources": [
+        {"name": "Attention Is All You Need 原论文", "url": "https://arxiv.org/abs/1706.03762"},
+        {"name": "so-large-lm Transformer章节", "url": "https://github.com/datawhalechina/so-large-lm/blob/main/docs/chapter2/1.attention.md"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-1-01", "front": "Self-Attention的计算公式是什么？每个符号代表什么？", "back": "Attention(Q,K,V) = softmax(QK^T / sqrt(d_k)) * V\nQ=Query, K=Key, V=Value, d_k=Key维度\n除以sqrt(d_k)防止点积过大导致softmax饱和", "topic": "Transformer", "day": "Day 1", "source": "Attention Is All You Need", "code": "scores = torch.matmul(Q, K.transpose(-2,-1)) / math.sqrt(d_k)\nscores = F.softmax(scores, dim=-1)\noutput = torch.matmul(scores, V)"},
+        {"id": "fc-1-1-02", "front": "Multi-Head Attention为什么要拆成多个头？", "back": "每个头学习不同的注意力模式（语法/语义/共指等）\n拆分后每个头维度=d_model/h，计算量不变\nMultiHead = Concat(head_1..h) · W_O", "topic": "Transformer", "day": "Day 1", "source": "Attention Is All You Need"}
+      ]
+    },
+    "1-1-2": {
+      "key_points": [
+        "git clone minimind后，核心配置在config.py: dim=512, n_layers=8, n_heads=16, vocab_size=6400",
+        "参数量计算: Embedding(6400*512=3.3M) + 8*Block(每块≈2.8M) + LM_Head(共享Embedding权重) ≈ 26M",
+        "依赖: torch>=2.0, transformers(仅tokenizer), 无需GPU即可跑26M模型",
+        "目录结构: model/model.py(模型), train_*.py(训练脚本), scripts/(数据处理)"
+      ],
+      "resources": [
+        {"name": "MiniMind GitHub", "url": "https://github.com/jingyaogong/minimind"},
+        {"name": "MiniMind config.py", "url": "https://github.com/jingyaogong/minimind/blob/master/model/LMConfig.py"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-1-03", "front": "MiniMind 26M参数量怎么算？", "back": "Embedding: 6400×512=3.3M\n每个Block: Attn(Wq+Wk+Wv+Wo=4×512×512) + FFN(w1+w2+w3) + 2×RMSNorm ≈ 2.8M\n8个Block: 8×2.8M=22.4M\nLM_Head与Embedding共享权重\n总计≈26M", "topic": "MiniMind", "day": "Day 1", "source": "minimind/model/LMConfig.py"}
+      ]
+    },
+    "1-1-3": {
+      "key_points": [
+        "MiniMind训练流程: Pretrain(无监督续写) → SFT(指令微调) → LoRA(参数高效微调) → DPO/RLHF(人类偏好对齐)",
+        "Pretrain: 用大量文本学习语言模型能力，loss=CrossEntropy(next token prediction)",
+        "SFT: 用instruction-response对训练，让模型学会遵循指令",
+        "LoRA/DPO/RLHF: 在SFT基础上进一步对齐人类偏好，让模型输出更有帮助、更安全"
+      ],
+      "resources": [
+        {"name": "MiniMind README 训练流程", "url": "https://github.com/jingyaogong/minimind#readme"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-1-04", "front": "LLM训练的四个阶段是什么？每个阶段的目标？", "back": "1. Pretrain: 海量文本续写，学语言能力\n2. SFT: instruction-response对，学遵循指令\n3. LoRA: 低秩微调，参数高效适配\n4. DPO/RLHF: 人类偏好对齐，更有帮助更安全", "topic": "LLM训练", "day": "Day 1", "source": "MiniMind README"}
+      ]
+    },
+    "1-2-1": {
+      "key_points": [
+        "RMSNorm公式: x / sqrt(mean(x²) + eps) * gamma，省去LayerNorm的减均值和bias",
+        "LayerNorm: (x-mean)/sqrt(var+eps)*gamma+beta vs RMSNorm: 只做re-scaling不做re-centering",
+        "Pre-Norm(先归一化再Attention) vs Post-Norm(先Attention再归一化)，现代LLM都用Pre-Norm更稳定",
+        "MiniMind实现: torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + eps) * weight"
+      ],
+      "resources": [
+        {"name": "RMSNorm论文", "url": "https://arxiv.org/abs/1910.07467"},
+        {"name": "so-large-lm Normalization", "url": "https://github.com/datawhalechina/so-large-lm/blob/main/docs/chapter2/2.normalization.md"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-2-01", "front": "RMSNorm和LayerNorm的区别？为什么现代LLM都用RMSNorm？", "back": "LayerNorm: (x-mean)/sqrt(var+eps)*gamma+beta\nRMSNorm: x/sqrt(mean(x²)+eps)*gamma\n区别: 省去减均值和bias，计算更快\n效果几乎一样，只做缩放就够了", "topic": "Normalization", "day": "Day 2", "source": "minimind/model/model.py", "code": "def forward(self, x):\n    norm = torch.rsqrt(x.pow(2).mean(-1,keepdim=True)+self.eps)\n    return x * norm * self.weight"}
+      ]
+    },
+    "1-2-2": {
+      "key_points": [
+        "RoPE核心: 将位置编码为旋转角度θ，对Q和K做二维旋转变换",
+        "旋转矩阵: R(m)·q 使得 f(q,m)·f(k,n)^T = g(q,k,m-n)，天然获得相对位置信息",
+        "precompute_pos_cis: 预计算cos和sin值，避免重复计算。频率公式 θ_i = 10000^(-2i/d)",
+        "外推性: RoPE天然支持比训练时更长的序列，配合NTK-aware scaling效果更好"
+      ],
+      "resources": [
+        {"name": "RoPE原论文 (RoFormer)", "url": "https://arxiv.org/abs/2104.09864"},
+        {"name": "so-large-lm 位置编码", "url": "https://github.com/datawhalechina/so-large-lm/blob/main/docs/chapter2/3.位置编码.md"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-2-02", "front": "RoPE如何让Attention感知位置？", "back": "将位置m编码为旋转角度θ，对Q和K做旋转\nf(q,m)=R(m)·q, f(k,n)=R(n)·k\nQ·K^T自动变成关于相对位置(m-n)的函数\n频率: θ_i = 10000^(-2i/d)\n天然支持外推到更长序列", "topic": "位置编码", "day": "Day 2", "source": "RoFormer论文"}
+      ]
+    },
+    "1-2-3": {
+      "key_points": [
+        "model.py类结构: RMSNorm → Attention → FeedForward → TransformerBlock → Transformer",
+        "Attention: Q/K/V线性投影 → RoPE → Scaled Dot-Product → GQA(n_kv_heads<n_heads) → Output投影",
+        "FeedForward(SwiGLU): output = W2(SiLU(W1·x) ⊙ W3·x)，门控机制选择性通过信息",
+        "TransformerBlock: x = x + Attention(RMSNorm(x)) + FFN(RMSNorm(x))，Pre-Norm+残差"
+      ],
+      "resources": [
+        {"name": "MiniMind model.py", "url": "https://github.com/jingyaogong/minimind/blob/master/model/model.py"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-2-03", "front": "SwiGLU的公式和优势？", "back": "SwiGLU(x) = W2(SiLU(W1·x) ⊙ W3·x)\nSiLU(x) = x·sigmoid(x)\nvs ReLU: 无死神经元\nvs GELU: 门控(W3)选择性通过信息\n代价: 多一个W3，参数+33%", "topic": "FFN", "day": "Day 2", "source": "minimind/model/model.py", "code": "def forward(self, x):\n    return self.w2(F.silu(self.w1(x)) * self.w3(x))"}
+      ]
+    },
+    "1-3-1": {
+      "key_points": [
+        "QKV计算: Q=xW_q, K=xW_k, V=xW_v → scores=QK^T/sqrt(d_k) → mask → softmax → ×V",
+        "Causal Mask: 上三角填-inf，softmax后变0，确保只看左边token(自回归)",
+        "GQA: n_heads=16个Q头共享n_kv_heads=8组KV，每2个Q头共享1组KV，KV Cache减半",
+        "KV Cache: 推理时缓存历史token的K和V，新token只算自己的qkv。内存=2×n_layers×n_kv_heads×d_head×seq_len×dtype"
+      ],
+      "resources": [
+        {"name": "GQA论文", "url": "https://arxiv.org/abs/2305.13245"},
+        {"name": "MiniMind Attention实现", "url": "https://github.com/jingyaogong/minimind/blob/master/model/model.py"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-3-01", "front": "GQA和MHA、MQA的区别？", "back": "MHA: n_heads个Q头，n_heads个KV头\nMQA: n_heads个Q头，1个KV头(极端压缩)\nGQA: n_heads个Q头，n_kv_heads个KV头(折中)\nMiniMind: 16个Q头共享8组KV\n优势: KV Cache减半，推理加速", "topic": "Attention", "day": "Day 3", "source": "GQA论文"},
+        {"id": "fc-1-3-02", "front": "KV Cache的原理和内存计算？", "back": "自回归生成时缓存之前token的K和V\n新token只需算自己的q,k,v再拼接\n内存 = 2(K+V) × n_layers × n_kv_heads × d_head × seq_len × dtype\nGQA让n_kv_heads更小→Cache更小→能放更长序列", "topic": "推理优化", "day": "Day 3", "source": "minimind/model/model.py"}
+      ]
+    },
+    "1-3-2": {
+      "key_points": [
+        "BPE步骤: 1.拆成字符 2.统计相邻pair频率 3.合并最高频pair为新token 4.重复至vocab_size",
+        "MiniMind vocab_size=6400(很小)，GPT-4用100k+。小词表→同样文本需更多token→上下文利用率低",
+        "sentencepiece: Google开源分词工具，MiniMind用它训练自己的分词器",
+        "特殊token: <bos>(序列开始), <eos>(序列结束), <pad>(填充), <unk>(未知)"
+      ],
+      "resources": [
+        {"name": "BPE原论文", "url": "https://arxiv.org/abs/1508.07909"},
+        {"name": "MiniMind tokenizer训练脚本", "url": "https://github.com/jingyaogong/minimind/blob/master/scripts/train_tokenizer.py"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-3-03", "front": "BPE分词的步骤？", "back": "1. 初始化: 文本拆成单个字符/byte\n2. 统计所有相邻pair出现频率\n3. 合并频率最高的pair为新token\n4. 重复2-3直到达到vocab_size\nMiniMind: vocab_size=6400(小)\nGPT-4: 100k+(大)", "topic": "Tokenizer", "day": "Day 3", "source": "minimind/scripts/train_tokenizer.py"}
+      ]
+    },
+    "1-3-3": {
+      "key_points": [
+        "RMSNorm解决: 训练不稳定问题，比LayerNorm更高效(省去mean计算)",
+        "RoPE解决: 位置信息编码，天然支持相对位置和长度外推",
+        "GQA解决: KV Cache内存过大问题，折中了质量和效率",
+        "SwiGLU解决: FFN表达能力问题，门控机制比ReLU/GELU更强"
+      ],
+      "resources": [
+        {"name": "LLaMA论文(组件选择)", "url": "https://arxiv.org/abs/2302.13971"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-3-04", "front": "RMSNorm/RoPE/GQA/SwiGLU各解决什么问题？", "back": "RMSNorm: 训练稳定性，比LayerNorm快\nRoPE: 位置编码，支持长度外推\nGQA: KV Cache内存减半，推理加速\nSwiGLU: FFN表达能力，门控选择信息\n这四个是现代LLM的标配组件", "topic": "LLM组件", "day": "Day 3", "source": "LLaMA论文"}
+      ]
+    },
+    "1-4-1": {
+      "key_points": [
+        "pretrain_t2t_mini.jsonl格式: 每行一个JSON，{\"text\": \"连续文本内容\"}，无指令格式",
+        "train_pretrain.py流程: 加载数据→DataLoader→模型前向→CrossEntropyLoss→反向传播→AdamW更新",
+        "Causal LM目标: 预测下一个token，label = input右移一位，loss只算非padding位置",
+        "训练超参: batch_size, learning_rate, warmup_steps, max_seq_len=512"
+      ],
+      "resources": [
+        {"name": "MiniMind train_pretrain.py", "url": "https://github.com/jingyaogong/minimind/blob/master/train_pretrain.py"},
+        {"name": "MiniMind 预训练数据", "url": "https://github.com/jingyaogong/minimind#dataset"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-4-01", "front": "Pretrain数据格式和训练目标是什么？", "back": "数据: JSONL格式，每行{\"text\": \"连续文本\"}\n目标: Causal LM，预测下一个token\nlabel = input右移一位\nloss = CrossEntropy(logits, labels)\n只算非padding位置的loss", "topic": "预训练", "day": "Day 4", "source": "train_pretrain.py"}
+      ]
+    },
+    "1-4-2": {
+      "key_points": [
+        "DataLoader: 将文本tokenize后按max_seq_len切分，组成batch，shuffle打乱顺序",
+        "CrossEntropyLoss: loss = -log(p(correct_token))，对vocab维度做softmax后取正确token的负对数",
+        "AdamW优化器: Adam + weight decay解耦。β1=0.9, β2=0.999, weight_decay=0.01",
+        "Cosine LR: 学习率从warmup线性增长到peak，然后余弦衰减到min_lr。公式: lr = min_lr + 0.5*(max_lr-min_lr)*(1+cos(π*t/T))"
+      ],
+      "resources": [
+        {"name": "AdamW论文", "url": "https://arxiv.org/abs/1711.05101"},
+        {"name": "MiniMind训练代码", "url": "https://github.com/jingyaogong/minimind/blob/master/train_pretrain.py"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-4-02", "front": "Cosine LR Schedule的公式和作用？", "back": "lr = min_lr + 0.5*(max_lr-min_lr)*(1+cos(π*t/T))\n先warmup线性增长到peak\n然后余弦衰减到min_lr\n作用: 前期快速学习，后期精细调整\n比固定lr或step decay更平滑", "topic": "优化器", "day": "Day 4", "source": "train_pretrain.py"}
+      ]
+    },
+    "1-4-3": {
+      "key_points": [
+        "虚拟地址→物理地址: CPU通过页表(Page Table)将虚拟地址翻译为物理地址",
+        "页表: 每个进程独立的映射表，虚拟页号(VPN)→物理页号(PPN)，页大小通常4KB",
+        "TLB(Translation Lookaside Buffer): 页表的缓存，命中率>99%，未命中需查多级页表",
+        "为PagedAttention铺垫: vLLM的PagedAttention借鉴OS虚拟内存思想，将KV Cache按页管理"
+      ],
+      "resources": [
+        {"name": "CSAPP 第9章 虚拟内存", "url": "https://csapp.cs.cmu.edu/"},
+        {"name": "PagedAttention论文", "url": "https://arxiv.org/abs/2309.06180"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-4-03", "front": "虚拟内存的核心机制和PagedAttention的关系？", "back": "OS: 虚拟地址→页表→物理地址，按页(4KB)管理\nTLB缓存页表，命中率>99%\nPagedAttention: 借鉴同样思想\n将KV Cache按block(页)管理\n不需要连续物理内存→减少碎片→提高吞吐", "topic": "虚拟内存", "day": "Day 4", "source": "CSAPP Ch.9 + PagedAttention论文"}
+      ]
+    },
+    "1-5-1": {
+      "key_points": [
+        "Loss曲线: 训练loss应持续下降并趋于平稳，突然上升说明学习率过大或数据异常",
+        "Perplexity = exp(loss)，表示模型对下一个token的平均困惑度。PPL=10意味着平均在10个token中犹豫",
+        "验证集loss: 训练loss下降但验证loss上升→过拟合，两者都不下降→欠拟合或lr太小",
+        "MiniMind 26M Pretrain: 预期loss从8+降到3-4，PPL从3000+降到20-50"
+      ],
+      "resources": [
+        {"name": "如何分析训练曲线", "url": "https://github.com/jingyaogong/minimind#training"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-5-01", "front": "Perplexity的含义和计算公式？", "back": "PPL = exp(CrossEntropyLoss)\n含义: 模型对下一个token的平均困惑度\nPPL=10 → 平均在10个候选中犹豫\n越低越好。GPT-3在测试集PPL≈20\nMiniMind pretrain预期: 从3000+降到20-50", "topic": "评估指标", "day": "Day 5", "source": "训练日志分析"}
+      ]
+    },
+    "1-5-2": {
+      "key_points": [
+        "数据清洗: 去除HTML标签、特殊字符、过短/过长文本、低质量内容(重复/乱码)",
+        "去重: MinHash/SimHash近似去重，完全相同的文本exact去重，去重率通常30-50%",
+        "数据配比: 代码:中文:英文 ≈ 1:3:3，不同领域数据按比例混合防止某类过拟合",
+        "数据质量>数量: Chinchilla定律指出数据量应与模型参数量匹配(约20:1 token:param)"
+      ],
+      "resources": [
+        {"name": "The Pile数据集论文", "url": "https://arxiv.org/abs/2101.00027"},
+        {"name": "数据工程最佳实践", "url": "https://github.com/datawhalechina/so-large-lm/blob/main/docs/chapter3/1.预训练数据.md"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-5-02", "front": "Chinchilla定律是什么？对预训练数据量有什么指导？", "back": "Chinchilla定律: 最优训练时\n数据token数 ≈ 20 × 模型参数量\n如7B模型需约140B tokens\n数据不足→欠训练(undertrained)\n数据过多→收益递减\n结论: 数据质量和数量同等重要", "topic": "数据工程", "day": "Day 5", "source": "Chinchilla论文(DeepMind)"}
+      ]
+    },
+    "1-5-3": {
+      "key_points": [
+        "Page Fault: 访问的虚拟页不在物理内存中，触发缺页中断，OS从磁盘加载",
+        "mmap内存映射: 将文件映射到虚拟地址空间，按需加载(lazy loading)，适合大文件",
+        "Demand Paging: 只在访问时才分配物理页，节省内存。所有现代OS都用这种策略",
+        "与LLM关系: 大模型权重文件用mmap加载，不需要一次性全部读入内存"
+      ],
+      "resources": [
+        {"name": "CSAPP 第9章 虚拟内存", "url": "https://csapp.cs.cmu.edu/"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-5-03", "front": "mmap内存映射的原理和在LLM中的应用？", "back": "mmap: 将文件映射到虚拟地址空间\n访问时触发page fault→OS从磁盘加载该页\n优点: lazy loading，不需一次性读入\nLLM应用: 大模型权重文件(.bin)用mmap加载\n避免OOM，按需加载所需权重页", "topic": "内存管理", "day": "Day 5", "source": "CSAPP Ch.9"}
+      ]
+    },
+    "1-6-1": {
+      "key_points": [
+        "SFT(Supervised Fine-Tuning): 在预训练模型上用指令-回答对微调，让模型学会遵循指令",
+        "数据格式: {\"instruction\": \"问题\", \"output\": \"回答\"} 或多轮对话格式",
+        "与Pretrain区别: Pretrain学语言能力(续写)，SFT学指令跟随能力(问答)",
+        "训练技巧: 学习率比Pretrain小(1e-5 vs 1e-4)，epoch少(2-3)，防止灾难性遗忘"
+      ],
+      "resources": [
+        {"name": "MiniMind SFT训练", "url": "https://github.com/jingyaogong/minimind/blob/master/train_full_sft.py"},
+        {"name": "Self-Instruct论文", "url": "https://arxiv.org/abs/2212.10560"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-6-01", "front": "SFT和Pretrain的核心区别？", "back": "Pretrain: 海量文本续写，学语言能力\n  数据: {\"text\": \"连续文本\"}\n  lr=1e-4, 多epoch\nSFT: 指令-回答对，学指令跟随\n  数据: {\"instruction\":...,\"output\":...}\n  lr=1e-5, 2-3 epoch\n  防止灾难性遗忘", "topic": "SFT", "day": "Day 6", "source": "train_full_sft.py"}
+      ]
+    },
+    "1-6-2": {
+      "key_points": [
+        "Chat Template: <bos>system\\n你是...\\nuser\\n问题\\nassistant\\n回答<eos> 格式化对话",
+        "Loss Mask: 只计算assistant回答部分的loss，system和user部分的loss被mask掉(设为-100)",
+        "为什么mask: 模型不需要学会生成用户的问题，只需学会生成高质量回答",
+        "MiniMind实现: 通过labels中填-100实现mask，CrossEntropyLoss的ignore_index=-100"
+      ],
+      "resources": [
+        {"name": "MiniMind Chat Template", "url": "https://github.com/jingyaogong/minimind#chat-template"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-6-02", "front": "SFT中为什么要做Loss Mask？怎么实现？", "back": "原因: 只需学生成回答，不需学生成问题\nMask: system和user部分的labels设为-100\nCrossEntropyLoss(ignore_index=-100)\n只有assistant部分参与loss计算\n格式: <bos>system...user...assistant...<eos>", "topic": "SFT", "day": "Day 6", "source": "MiniMind训练代码"}
+      ]
+    },
+    "1-7-1": {
+      "key_points": [
+        "多轮对话测试: 检查模型能否在上下文中保持一致性和记忆",
+        "评估维度: 指令跟随度、回答质量、幻觉率、安全性",
+        "人工评估 vs 自动评估: GPT-4打分(MT-Bench)、人工A/B测试、BLEU/ROUGE(不太适合)",
+        "MiniMind SFT后预期: 能回答简单问题，多轮对话能力有限(26M参数)"
+      ],
+      "resources": [
+        {"name": "MT-Bench评估", "url": "https://arxiv.org/abs/2306.05685"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-7-01", "front": "如何评估SFT后的模型质量？", "back": "1. 多轮对话测试: 上下文一致性\n2. MT-Bench: GPT-4自动打分(1-10)\n3. 人工A/B测试: 对比不同版本\n4. 检查: 指令跟随度、幻觉率\n注意: BLEU/ROUGE不适合开放式生成\nMiniMind 26M: 能答简单问题", "topic": "模型评估", "day": "Day 7", "source": "MT-Bench论文"}
+      ]
+    },
+    "1-7-2": {
+      "key_points": [
+        "SFT vs Pretrain代码差异: 数据加载(对话格式vs纯文本)、loss计算(有mask vs无mask)",
+        "SFT DataLoader: 将对话转为token序列，标记哪些位置参与loss(assistant部分)",
+        "学习率: SFT通常用更小的lr(1e-5~5e-5)，防止灾难性遗忘",
+        "MiniMind SFT脚本: train_full_sft.py，对比train_pretrain.py主要改了数据处理部分"
+      ],
+      "resources": [
+        {"name": "MiniMind train_full_sft.py", "url": "https://github.com/jingyaogong/minimind/blob/master/train_full_sft.py"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-7-02", "front": "SFT和Pretrain的代码差异在哪？", "back": "数据: SFT用对话格式，Pretrain用纯文本\nLoss: SFT有mask(只算assistant)，Pretrain全算\nLR: SFT更小(1e-5)，Pretrain较大(1e-4)\nEpoch: SFT少(2-3)，Pretrain多\n其余(模型/优化器/调度)基本相同", "topic": "SFT", "day": "Day 7", "source": "train_full_sft.py vs train_pretrain.py"}
+      ]
+    },
+    "1-7-3": {
+      "key_points": [
+        "数据差异: Pretrain用大量无标注文本(TB级)，SFT用少量高质量指令对(10K-100K条)",
+        "Loss差异: Pretrain的loss在所有token上计算，SFT只在assistant回答token上计算",
+        "行为差异: Pretrain后模型只会续写，SFT后模型会遵循指令回答问题",
+        "比喻: Pretrain像学语言(大量阅读)，SFT像学应试技巧(做题训练)"
+      ],
+      "resources": [
+        {"name": "InstructGPT论文", "url": "https://arxiv.org/abs/2203.02155"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-7-03", "front": "Pretrain vs SFT: 数据、Loss、行为三方面差异？", "back": "数据: Pretrain=TB级无标注文本, SFT=10K-100K指令对\nLoss: Pretrain=所有token, SFT=只算assistant token\n行为: Pretrain=只会续写, SFT=遵循指令回答\n比喻: Pretrain=大量阅读学语言, SFT=做题学应试", "topic": "训练对比", "day": "Day 7", "source": "InstructGPT论文"}
+      ]
+    },
+    "1-8-1": {
+      "key_points": [
+        "LoRA核心: W = W₀ + BA，其中B∈R^(d×r), A∈R^(r×d)，r<<d(如r=8)",
+        "低秩分解: 不修改原始权重W₀(冻结)，只训练小矩阵B和A，参数量从d²降到2dr",
+        "为什么只调Q和V: 实验发现只调Q和V效果最好，K和FFN收益递减",
+        "rank选择: r=4~64，r越大越接近full fine-tune，r=8-16是常用范围"
+      ],
+      "resources": [
+        {"name": "LoRA原论文", "url": "https://arxiv.org/abs/2106.09685"},
+        {"name": "MiniMind LoRA训练", "url": "https://github.com/jingyaogong/minimind/blob/master/train_lora.py"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-8-01", "front": "LoRA的核心公式和为什么只调Q和V？", "back": "公式: W = W₀ + BA (W₀冻结)\nB∈R^(d×r), A∈R^(r×d), r<<d\n参数量: d²→2dr (r=8时减少99%+)\n只调Q和V: 实验表明效果最好\nK和FFN的收益递减\nrank: r=8-16常用，越大越接近full FT", "topic": "LoRA", "day": "Day 8", "source": "LoRA论文"}
+      ]
+    },
+    "1-8-2": {
+      "key_points": [
+        "train_lora.py: 冻结所有参数，只在Q和V的Linear层注入LoRA矩阵",
+        "参数量对比: Full FT训练26M参数，LoRA(r=8)只训练约0.2M参数(不到1%)",
+        "训练速度: LoRA比Full FT快2-3倍(梯度计算量小)，显存占用减少50%+",
+        "合并权重: 训练后W_merged = W₀ + BA，合并后推理无额外开销"
+      ],
+      "resources": [
+        {"name": "MiniMind train_lora.py", "url": "https://github.com/jingyaogong/minimind/blob/master/train_lora.py"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-8-02", "front": "LoRA训练的参数量对比和合并方式？", "back": "Full FT: 训练全部26M参数\nLoRA(r=8): 只训练~0.2M参数(<1%)\n速度: LoRA快2-3倍，显存-50%\n合并: W_merged = W₀ + BA\n合并后推理无额外开销\n可以为不同任务训练不同LoRA适配器", "topic": "LoRA", "day": "Day 8", "source": "train_lora.py"}
+      ]
+    },
+    "1-9-1": {
+      "key_points": [
+        "DPO公式: L_DPO = -log σ(β(log π_θ(y_w|x)/π_ref(y_w|x) - log π_θ(y_l|x)/π_ref(y_l|x)))",
+        "绕过Reward Model: DPO直接从偏好数据优化策略，无需训练单独的奖励模型",
+        "Preference数据: {chosen: '好回答', rejected: '差回答'}，人工标注或GPT-4生成",
+        "β参数: 控制偏离参考模型的程度，β越大越保守(越接近参考模型)"
+      ],
+      "resources": [
+        {"name": "DPO原论文", "url": "https://arxiv.org/abs/2305.18290"},
+        {"name": "MiniMind DPO训练", "url": "https://github.com/jingyaogong/minimind/blob/master/train_dpo.py"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-9-01", "front": "DPO的核心公式和相比RLHF的优势？", "back": "L = -log σ(β(log π_θ(y_w|x)/π_ref(y_w|x) - log π_θ(y_l|x)/π_ref(y_l|x)))\ny_w=chosen, y_l=rejected\n优势: 无需训练Reward Model\n直接从偏好数据优化\n训练更稳定，超参更少\nβ控制偏离参考模型的程度", "topic": "DPO", "day": "Day 9", "source": "DPO论文"}
+      ]
+    },
+    "1-9-2": {
+      "key_points": [
+        "train_dpo.py: 需要SFT后的模型作为起点(π_ref)和可训练模型(π_θ)",
+        "数据准备: 每条样本包含prompt + chosen response + rejected response",
+        "训练流程: 同时前向两个模型(ref和θ)，计算log概率差，优化DPO loss",
+        "实践要点: β=0.1常用，数据质量比数量重要，1K-10K偏好对即可"
+      ],
+      "resources": [
+        {"name": "MiniMind train_dpo.py", "url": "https://github.com/jingyaogong/minimind/blob/master/train_dpo.py"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-9-02", "front": "DPO训练需要什么数据和模型？", "back": "模型: π_ref(SFT后冻结) + π_θ(可训练)\n数据: {prompt, chosen, rejected}\n来源: 人工标注或GPT-4生成偏好对\n训练: 同时前向两个模型算log概率差\n超参: β=0.1, 1K-10K偏好对即可\n数据质量 > 数量", "topic": "DPO", "day": "Day 9", "source": "train_dpo.py"}
+      ]
+    },
+    "1-10-1": {
+      "key_points": [
+        "RLHF三阶段: 1.SFT训练基础模型 2.训练Reward Model(RM) 3.PPO优化策略",
+        "Reward Model: 输入(prompt, response)→输出标量奖励分数，用偏好对比较训练",
+        "PPO: 策略梯度算法，用RM的奖励信号优化模型，加KL散度约束防止偏离太远",
+        "InstructGPT: OpenAI的RLHF实践，证明了RLHF能显著提升模型helpfulness和safety"
+      ],
+      "resources": [
+        {"name": "InstructGPT论文", "url": "https://arxiv.org/abs/2203.02155"},
+        {"name": "RLHF综述", "url": "https://arxiv.org/abs/2307.15217"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-10-01", "front": "RLHF的三个阶段分别是什么？", "back": "阶段1: SFT - 用指令数据微调基础模型\n阶段2: RM - 训练奖励模型(偏好对比较)\n  输入(prompt,response)→标量奖励\n阶段3: PPO - 用RM奖励优化策略\n  加KL约束防止偏离SFT模型太远\nInstructGPT证明了这个流程的有效性", "topic": "RLHF", "day": "Day 10", "source": "InstructGPT论文"}
+      ]
+    },
+    "1-10-2": {
+      "key_points": [
+        "GRPO(Group Relative Policy Optimization): DeepSeek提出，去掉Critic网络",
+        "核心思想: 对同一prompt采样一组回答，用组内相对奖励代替Critic的value估计",
+        "优势: 省去Critic模型(通常和Actor一样大)，训练资源减半",
+        "DeepSeek-R1: 用GRPO训练，展示了纯RL(无SFT)也能涌现Chain-of-Thought能力"
+      ],
+      "resources": [
+        {"name": "DeepSeek-R1论文", "url": "https://arxiv.org/abs/2401.02954"},
+        {"name": "GRPO论文(DeepSeekMath)", "url": "https://arxiv.org/abs/2402.03300"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-10-02", "front": "GRPO和PPO的核心区别？", "back": "PPO: 需要Critic网络估计value\nGRPO: 去掉Critic，用组内相对奖励\n方法: 同一prompt采样一组回答\n用组内均值/标准差归一化奖励\n优势: 省去Critic(资源减半)\nDeepSeek-R1: GRPO+纯RL涌现CoT", "topic": "GRPO", "day": "Day 10", "source": "DeepSeekMath论文"}
+      ]
+    },
+    "1-11-1": {
+      "key_points": [
+        "train_ppo.py: 包含Actor(生成模型)、Critic(价值模型)、RM(奖励模型)、Ref(参考模型)四个模型",
+        "PPO训练循环: 采样→RM打分→计算advantage(GAE)→更新Actor和Critic",
+        "Reward曲线: 初期波动大是正常的，长期应该上升。reward hacking要警惕",
+        "KL惩罚: reward_total = reward_rm - β*KL(π_θ||π_ref)，防止模型找到RM的漏洞"
+      ],
+      "resources": [
+        {"name": "MiniMind train_ppo.py", "url": "https://github.com/jingyaogong/minimind/blob/master/train_ppo.py"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-11-01", "front": "PPO训练需要几个模型？各自作用？", "back": "4个模型:\n1. Actor: 生成回答(要训练的)\n2. Critic: 估计state value(要训练)\n3. RM: 给回答打分(冻结)\n4. Ref: 参考模型算KL(冻结)\n总reward = RM分数 - β×KL(Actor||Ref)", "topic": "PPO", "day": "Day 11", "source": "train_ppo.py"}
+      ]
+    },
+    "1-11-2": {
+      "key_points": [
+        "GAE(Generalized Advantage Estimation): A_t = Σ(γλ)^l × δ_{t+l}，δ_t = r_t + γV(s_{t+1}) - V(s_t)",
+        "Clipped Objective: L = min(r_t·A_t, clip(r_t, 1-ε, 1+ε)·A_t)，r_t = π_θ/π_old",
+        "ε=0.2常用，限制策略更新幅度防止崩溃",
+        "Actor更新用clipped objective，Critic更新用MSE(V_predicted - V_target)"
+      ],
+      "resources": [
+        {"name": "PPO原论文", "url": "https://arxiv.org/abs/1707.06347"},
+        {"name": "GAE论文", "url": "https://arxiv.org/abs/1506.02438"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-11-02", "front": "PPO的Clipped Objective公式和作用？", "back": "L = min(r_t·A_t, clip(r_t,1-ε,1+ε)·A_t)\nr_t = π_θ(a|s)/π_old(a|s)\nε=0.2: 限制策略更新幅度\n防止单步更新过大导致训练崩溃\nGAE计算advantage:\nA_t = Σ(γλ)^l·δ_{t+l}", "topic": "PPO", "day": "Day 11", "source": "PPO论文"}
+      ]
+    },
+    "1-12-1": {
+      "key_points": [
+        "train_grpo.py: 只需Actor和Ref两个模型，无需Critic",
+        "采样: 对每个prompt生成K个回答(如K=8)，用RM对每个回答打分",
+        "相对奖励: r_normalized = (r_i - mean(r_group)) / std(r_group)，用组内排名代替绝对分数",
+        "训练更稳定: 不依赖Critic的value估计，减少了一个不稳定因素"
+      ],
+      "resources": [
+        {"name": "MiniMind train_grpo.py", "url": "https://github.com/jingyaogong/minimind/blob/master/train_grpo.py"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-12-01", "front": "GRPO的采样和奖励计算过程？", "back": "1. 每个prompt生成K个回答(K=8)\n2. RM对每个回答打分\n3. 归一化: r_i = (r_i-mean)/std\n4. 用归一化奖励更新Actor\n只需Actor+Ref两个模型\n比PPO少Critic，训练更稳定", "topic": "GRPO", "day": "Day 12", "source": "train_grpo.py"}
+      ]
+    },
+    "1-12-2": {
+      "key_points": [
+        "PPO: 4个模型(Actor+Critic+RM+Ref)，最灵活但资源消耗最大",
+        "DPO: 2个模型(θ+Ref)，无需RM，直接从偏好数据优化，最简单",
+        "GRPO: 2个模型(Actor+Ref)+RM采样，介于PPO和DPO之间",
+        "选择依据: 资源充足用PPO，简单快速用DPO，大规模+稳定用GRPO"
+      ],
+      "resources": [
+        {"name": "对齐方法对比综述", "url": "https://arxiv.org/abs/2307.15217"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-12-02", "front": "PPO vs DPO vs GRPO: 模型数量和适用场景？", "back": "PPO: 4模型(Actor+Critic+RM+Ref)\n  最灵活，资源消耗最大\nDPO: 2模型(θ+Ref)，无需RM\n  最简单，直接偏好优化\nGRPO: 2模型+RM采样\n  省Critic，大规模稳定\n选择: 资源多→PPO，简单→DPO，大规模→GRPO", "topic": "对齐方法", "day": "Day 12", "source": "综述论文"}
+      ]
+    },
+    "1-13-1": {
+      "key_points": [
+        "VLM架构: CLIP视觉编码器 + 线性投影层 + LLM文本解码器",
+        "CLIP: 对比学习训练的视觉编码器，输出图像特征向量(patch tokens)",
+        "线性投影: 将CLIP的视觉特征维度映射到LLM的文本embedding维度",
+        "MiniMind-V: CLIP提取50个visual tokens → 线性投影 → 拼接到text tokens前面"
+      ],
+      "resources": [
+        {"name": "MiniMind-V 架构", "url": "https://github.com/jingyaogong/minimind#minimind-v"},
+        {"name": "CLIP论文", "url": "https://arxiv.org/abs/2103.00020"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-13-01", "front": "VLM(视觉语言模型)的基本架构？", "back": "三部分:\n1. CLIP视觉编码器: 图像→patch tokens\n2. 线性投影层: 视觉维度→文本维度\n3. LLM解码器: 处理视觉+文本token\nMiniMind-V: 50个visual tokens拼接到text前\n类似LLaVA架构", "topic": "VLM", "day": "Day 13", "source": "MiniMind-V"}
+      ]
+    },
+    "1-13-2": {
+      "key_points": [
+        "搭建步骤: 1.下载CLIP模型 2.实现投影层 3.修改LLM输入处理 4.准备图文数据",
+        "投影层: nn.Linear(clip_dim, llm_dim)，将CLIP 768维→LLM 512维",
+        "数据准备: 图文对数据集，每条包含图片路径和描述文本",
+        "注意: CLIP部分通常冻结，只训练投影层和LLM(或只训练投影层)"
+      ],
+      "resources": [
+        {"name": "MiniMind-V 搭建指南", "url": "https://github.com/jingyaogong/minimind#minimind-v"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-13-02", "front": "VLM训练时哪些部分需要冻结？", "back": "CLIP视觉编码器: 通常冻结(已预训练好)\n投影层: 必须训练(连接视觉和文本)\nLLM: 可选训练(取决于资源)\n阶段1: 只训练投影层(图文对齐)\n阶段2: 解冻LLM微调(视觉指令跟随)", "topic": "VLM", "day": "Day 13", "source": "LLaVA论文"}
+      ]
+    },
+    "1-13-3": {
+      "key_points": [
+        "vision_utils.py: 封装CLIP特征提取，图像预处理(resize/normalize)→CLIP→patch tokens",
+        "50个visual tokens: CLIP ViT将224×224图像分成14×14=196个patch，池化/选择后变50个token",
+        "特征维度: CLIP输出768维，经投影变成LLM的512维",
+        "推理时: 图像→CLIP→投影→拼接到prompt前面→LLM生成文本"
+      ],
+      "resources": [
+        {"name": "MiniMind vision_utils.py", "url": "https://github.com/jingyaogong/minimind/blob/master/model/vision_utils.py"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-13-03", "front": "CLIP如何将图像变成50个visual tokens？", "back": "1. 图像resize到224×224\n2. ViT分成14×14=196个patch\n3. 每个patch编码为768维向量\n4. 池化/选择→50个visual tokens\n5. 线性投影768→512(LLM维度)\n6. 拼接到text tokens前面输入LLM", "topic": "VLM", "day": "Day 13", "source": "vision_utils.py"}
+      ]
+    },
+    "1-14-1": {
+      "key_points": [
+        "VLM训练分两阶段: 1.图文对齐(只训练投影层) 2.视觉指令微调(训练投影+LLM)",
+        "对齐数据: 图片-描述对(image captioning)，让投影层学会映射视觉语义",
+        "指令数据: 图片+问题→回答(visual QA)，让模型学会根据图片回答",
+        "Loss: 和SFT一样只算assistant部分，visual tokens不参与loss计算"
+      ],
+      "resources": [
+        {"name": "LLaVA论文", "url": "https://arxiv.org/abs/2304.08485"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-14-01", "front": "VLM训练的两个阶段？", "back": "阶段1: 图文对齐\n  数据: 图片-描述对\n  训练: 只投影层，CLIP和LLM冻结\n阶段2: 视觉指令微调\n  数据: 图片+问题→回答\n  训练: 投影层+LLM，CLIP冻结\nLoss只算文本生成部分", "topic": "VLM训练", "day": "Day 14", "source": "LLaVA论文"}
+      ]
+    },
+    "1-14-2": {
+      "key_points": [
+        "MoE(Mixture of Experts): 用多个Expert FFN替代单个FFN，每次只激活Top-K个",
+        "路由机制: Router(x) = softmax(x·W_gate)，选择得分最高的K个Expert",
+        "Top-2: 每个token激活2个Expert，加权求和输出。稀疏激活→计算量不增加",
+        "负载均衡Loss: 防止所有token都选同几个Expert，L_aux = N·Σ(f_i·P_i)"
+      ],
+      "resources": [
+        {"name": "Switch Transformer论文", "url": "https://arxiv.org/abs/2101.03961"},
+        {"name": "MiniMind MoE实现", "url": "https://github.com/jingyaogong/minimind#moe"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-14-02", "front": "MoE的路由机制和负载均衡？", "back": "路由: Router(x)=softmax(x·W_gate)\n选Top-K个Expert(通常K=2)\n输出: Σ(gate_i × Expert_i(x))\n负载均衡Loss: L_aux = N·Σ(f_i·P_i)\nf_i=Expert_i被选频率\nP_i=Router给Expert_i的平均概率\n防止token都选同几个Expert", "topic": "MoE", "day": "Day 14", "source": "Switch Transformer"}
+      ]
+    },
+    "1-15-1": {
+      "key_points": [
+        "全流程: Tokenizer→Embedding→N×(RMSNorm→Attention→RMSNorm→FFN)→RMSNorm→LM_Head",
+        "训练流程: Pretrain(语言能力)→SFT(指令跟随)→LoRA(高效微调)→DPO/PPO/GRPO(对齐)",
+        "关键组件: RMSNorm(稳定)、RoPE(位置)、GQA(效率)、SwiGLU(表达力)",
+        "扩展: MoE(稀疏扩容)、VLM(多模态)、DDP(多卡训练)"
+      ],
+      "resources": [
+        {"name": "MiniMind 完整文档", "url": "https://github.com/jingyaogong/minimind"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-15-01", "front": "从零构建LLM的完整流程图？", "back": "模型: Tokenizer→Embed→N×Block→LM_Head\nBlock: RMSNorm→Attn(RoPE+GQA)→RMSNorm→FFN(SwiGLU)\n训练: Pretrain→SFT→LoRA→DPO/PPO/GRPO\n扩展: MoE(稀疏)、VLM(多模态)、DDP(多卡)\n组件选择: RMSNorm+RoPE+GQA+SwiGLU=现代LLM标配", "topic": "总结", "day": "Day 15", "source": "MiniMind全流程"}
+      ]
+    },
+    "1-15-2": {
+      "key_points": [
+        "DDP(DistributedDataParallel): 每张GPU持有完整模型副本，数据并行",
+        "流程: 每张GPU处理不同batch → 各自前向+反向 → AllReduce梯度平均 → 同步更新",
+        "torchrun启动: torchrun --nproc_per_node=N train.py，自动设置rank和world_size",
+        "注意: batch_size按GPU数量缩放，学习率通常也线性缩放(linear scaling rule)"
+      ],
+      "resources": [
+        {"name": "PyTorch DDP教程", "url": "https://pytorch.org/tutorials/intermediate/ddp_tutorial.html"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-15-02", "front": "DDP多卡训练的流程和注意事项？", "back": "流程: 每GPU完整模型副本\n各自处理不同batch→前向→反向\nAllReduce梯度平均→同步更新\n启动: torchrun --nproc_per_node=N\n注意: batch_size按GPU数缩放\nlr线性缩放(linear scaling rule)", "topic": "分布式训练", "day": "Day 15", "source": "PyTorch DDP教程"}
+      ]
+    },
+    "1-15-3": {
+      "key_points": [
+        "Dense: 所有参数都参与每次计算(标准Transformer)，如LLaMA/GPT",
+        "MoE: 稀疏激活，每次只用Top-K个Expert。参数量大但计算量小(如Mixtral 8x7B实际计算≈14B)",
+        "VLM: Dense/MoE + 视觉编码器，多模态输入。如GPT-4V、LLaVA",
+        "选择: 资源有限用Dense，追求效率用MoE，多模态需求用VLM"
+      ],
+      "resources": [
+        {"name": "Mixtral论文", "url": "https://arxiv.org/abs/2401.04088"}
+      ],
+      "flashcards": [
+        {"id": "fc-1-15-03", "front": "Dense vs MoE vs VLM的区别和选择？", "back": "Dense: 全参数计算(LLaMA/GPT)\nMoE: 稀疏激活Top-K Expert\n  参数大计算小(Mixtral 8x7B≈14B计算)\nVLM: +视觉编码器(GPT-4V/LLaVA)\n选择: 资源有限→Dense\n  追求效率→MoE\n  多模态→VLM", "topic": "模型架构", "day": "Day 15", "source": "Mixtral论文"}
+      ]
+    }
+  }
+}

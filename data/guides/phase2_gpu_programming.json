@@ -1,0 +1,392 @@
+{
+  "phase_id": 2,
+  "enrichments": {
+    "2-1-1": {
+      "key_points": [
+        "GPU架构: SM(Streaming Multiprocessor)包含多个CUDA Core，每个SM有自己的shared memory和L1 cache",
+        "线程层次: Grid→Block→Warp(32线程)→Thread。Warp是最小调度单位，SIMT(单指令多线程)执行",
+        "占用率(Occupancy): 活跃Warp数/最大Warp数，受寄存器数、shared memory、block大小限制",
+        "A100规格: 108个SM，每SM 64个FP32 Core，80GB HBM2e(2TB/s带宽)，312 TFLOPS FP16"
+      ],
+      "resources": [
+        {"name": "CUDA编程入门", "url": "https://github.com/HeKun-NVIDIA/CUDA-Programming"},
+        {"name": "GPU架构演进", "url": "https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#hardware-implementation"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-1-01", "front": "GPU的线程层次结构？Warp是什么？", "back": "Grid → Block → Warp(32线程) → Thread\nWarp是最小调度单位(SIMT)\n同一Warp内线程执行相同指令\nWarp divergence: 分支导致串行执行\n占用率 = 活跃Warp/最大Warp\n受寄存器、shared memory、block大小限制", "topic": "GPU架构", "day": "Day 16", "source": "CUDA Programming Guide"}
+      ]
+    },
+    "2-1-2": {
+      "key_points": [
+        "CUDA kernel启动: kernel<<<gridDim, blockDim>>>(args)，grid和block可以是1D/2D/3D",
+        "__global__修饰符: 表示GPU上执行、CPU调用的函数(kernel)",
+        "线程索引: threadIdx.x(块内), blockIdx.x(块号), blockDim.x(块大小)。全局索引 = blockIdx.x*blockDim.x + threadIdx.x",
+        "vector_add: 每个线程处理一个元素，总线程数≥数组长度。边界检查: if(idx < n)"
+      ],
+      "resources": [
+        {"name": "CUDA vector_add示例", "url": "https://github.com/HeKun-NVIDIA/CUDA-Programming/blob/master/03_vector_add/vectorAdd.cu"},
+        {"name": "LeetCUDA", "url": "https://github.com/xlite-dev/LeetCUDA"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-1-02", "front": "CUDA kernel的线程索引怎么算？", "back": "全局索引 = blockIdx.x * blockDim.x + threadIdx.x\n启动: kernel<<<gridDim, blockDim>>>()\ngridDim = (N + blockDim - 1) / blockDim\n边界检查: if(idx < N)\nthreadIdx: 块内索引\nblockIdx: 块号\nblockDim: 每块线程数", "topic": "CUDA基础", "day": "Day 16", "source": "CUDA Programming", "code": "__global__ void add(float*a,float*b,float*c,int n){\n  int i=blockIdx.x*blockDim.x+threadIdx.x;\n  if(i<n) c[i]=a[i]+b[i];\n}"}
+      ]
+    },
+    "2-1-3": {
+      "key_points": [
+        "程序优化原则: 消除不必要的工作、利用指令级并行(ILP)、避免不可预测的分支",
+        "循环展开: 减少循环开销，增加ILP，编译器可自动优化",
+        "内存优化: 空间局部性(顺序访问)、时间局部性(重复使用)→提高cache命中率",
+        "Amdahl定律: 加速比 = 1/((1-f) + f/S)，f=可并行比例，S=并行加速倍数"
+      ],
+      "resources": [
+        {"name": "CSAPP 第5章 程序优化", "url": "https://csapp.cs.cmu.edu/"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-1-03", "front": "Amdahl定律的公式和含义？", "back": "加速比 = 1/((1-f) + f/S)\nf = 可并行化的比例\nS = 并行部分的加速倍数\n含义: 即使S→∞，加速比上限=1/(1-f)\n如果90%可并行→最多加速10倍\n启示: 优化串行瓶颈比堆更多核心重要", "topic": "程序优化", "day": "Day 16", "source": "CSAPP Ch.5"}
+      ]
+    },
+    "2-2-1": {
+      "key_points": [
+        "Parallel Reduction: 树形归约，每步活跃线程减半。O(N)工作量，O(logN)步骤",
+        "Warp Shuffle: __shfl_down_sync(mask, val, offset)，warp内线程直接交换寄存器值，无需shared memory",
+        "__syncthreads(): 块内所有线程同步屏障，确保shared memory写入对所有线程可见",
+        "优化: 避免warp divergence(连续线程活跃)、循环展开最后几步用warp shuffle"
+      ],
+      "resources": [
+        {"name": "NVIDIA Reduce优化", "url": "https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf"},
+        {"name": "LeetCUDA Reduce", "url": "https://github.com/xlite-dev/LeetCUDA"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-2-01", "front": "Parallel Reduction的优化策略？", "back": "基础: 树形归约，每步线程减半\n优化1: 连续线程活跃(避免divergence)\n优化2: 首次加载时就做一次reduce\n优化3: warp shuffle替代shared memory\n  __shfl_down_sync(mask,val,offset)\n优化4: 循环展开最后warp(无需sync)\n复杂度: O(N)工作量，O(logN)步骤", "topic": "CUDA算法", "day": "Day 17", "source": "NVIDIA Reduce PDF"}
+      ]
+    },
+    "2-2-2": {
+      "key_points": [
+        "Global Memory: 容量大(几十GB HBM)但延迟高(~400 cycles)，所有线程可访问",
+        "Shared Memory: 每SM 48-164KB，延迟极低(~5 cycles)，同一block内线程共享",
+        "Register: 每线程私有，最快但数量有限(每SM 65536个32位寄存器)",
+        "Bank Conflict: shared memory分32个bank，同一warp的线程访问同一bank会串行化"
+      ],
+      "resources": [
+        {"name": "CUDA内存层次", "url": "https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#memory-hierarchy"},
+        {"name": "CUDA编程 共享内存", "url": "https://github.com/HeKun-NVIDIA/CUDA-Programming"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-2-02", "front": "CUDA内存层次和Bank Conflict？", "back": "Global: 几十GB，~400cycles延迟\nShared: 48-164KB/SM，~5cycles\nRegister: 每线程私有，最快\nConstant: 只读，有cache\nBank Conflict: shared memory分32 bank\n同warp线程访问同bank→串行化\n解决: padding或调整访问模式", "topic": "CUDA内存", "day": "Day 17", "source": "CUDA Programming Guide"}
+      ]
+    },
+    "2-3-1": {
+      "key_points": [
+        "Naive矩阵乘: 每个线程计算C[i][j] = Σ A[i][k]*B[k][j]，需读取2N次global memory",
+        "带宽瓶颈: 每个FMA需要2次global read，算术强度=2N/(2N*sizeof)≈1 FLOP/Byte(远低于peak)",
+        "全局内存访问: A的行顺序访问(coalesced)，B的列访问不连续(bad pattern)",
+        "性能: naive实现通常只达到GPU峰值的1-5%"
+      ],
+      "resources": [
+        {"name": "矩阵乘法CUDA优化", "url": "https://github.com/xlite-dev/LeetCUDA"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-3-01", "front": "Naive矩阵乘法为什么慢？", "back": "每个线程算C[i][j]=Σ A[i][k]*B[k][j]\n每次FMA需2次global memory读取\n算术强度≈1 FLOP/Byte(极低)\nB的列访问不连续(non-coalesced)\n性能只有峰值的1-5%\n瓶颈: memory bound(带宽限制)", "topic": "矩阵乘法", "day": "Day 18", "source": "LeetCUDA"}
+      ]
+    },
+    "2-3-2": {
+      "key_points": [
+        "Tiling思想: 将A和B分成TILE_SIZE×TILE_SIZE的小块，加载到shared memory后计算",
+        "每个block: 加载A的一行tile和B的一列tile到shared memory → 计算部分和 → 累加所有tile",
+        "访存优化: 每个元素从global memory只读1次(到shared)，被复用TILE_SIZE次",
+        "Tile大小选择: 16×16或32×32常用。太大→shared memory不够，太小→利用率低"
+      ],
+      "resources": [
+        {"name": "Tiling矩阵乘详解", "url": "https://github.com/HeKun-NVIDIA/CUDA-Programming"},
+        {"name": "LeetCUDA GEMM", "url": "https://github.com/xlite-dev/LeetCUDA"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-3-02", "front": "矩阵乘法Tiling优化的原理？", "back": "将矩阵分成TILE×TILE小块\n加载tile到shared memory(快)\n每个元素只读global 1次，复用TILE次\n算术强度提升TILE倍\nTile=16: 从1→16 FLOP/Byte\n步骤: load tile→sync→compute→sync→next tile\nTile大小: 16×16或32×32常用", "topic": "矩阵乘法", "day": "Day 18", "source": "CUDA Programming"}
+      ]
+    },
+    "2-4-1": {
+      "key_points": [
+        "存储器层次: Register→L1/Shared→L2→HBM(Global)→Host(CPU)RAM→Disk",
+        "每层容量增大、延迟增加: Register(0.5ns)→L1(5ns)→L2(20ns)→HBM(200ns)",
+        "Cache Line: 通常128B(GPU)或64B(CPU)，coalesced访问可以一次加载多个元素",
+        "局部性原理: 时间局部性(最近访问的数据会再次使用)和空间局部性(相邻数据会被使用)"
+      ],
+      "resources": [
+        {"name": "CSAPP 第6章 存储器层次结构", "url": "https://csapp.cs.cmu.edu/"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-4-01", "front": "GPU存储器层次和各层延迟？", "back": "Register: ~0.5ns (最快，最小)\nL1/Shared: ~5ns (48-164KB/SM)\nL2: ~20ns (几MB，所有SM共享)\nHBM: ~200ns (几十GB，2TB/s带宽)\nCache Line: GPU 128B\nCoalesced访问: 同warp连续地址→1次传输\n局部性: 时间+空间", "topic": "存储器层次", "day": "Day 19", "source": "CSAPP Ch.6"}
+      ]
+    },
+    "2-4-2": {
+      "key_points": [
+        "数值稳定Softmax: 先减最大值防止exp溢出。softmax(x_i) = exp(x_i - max(x)) / Σexp(x_j - max(x))",
+        "三遍算法: 1.求max 2.求Σexp(x-max) 3.除以sum。需要3次遍历数据",
+        "Online算法: 一遍求max和sum，边更新max边修正之前的sum。减少到1-2遍",
+        "CUDA实现: 每个block处理一行，先parallel reduce求max，再reduce求sum"
+      ],
+      "resources": [
+        {"name": "Online Softmax论文", "url": "https://arxiv.org/abs/1805.02867"},
+        {"name": "LeetCUDA Softmax", "url": "https://github.com/xlite-dev/LeetCUDA"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-4-02", "front": "数值稳定的Softmax怎么实现？", "back": "问题: exp(x)对大值溢出\n解决: softmax(x_i)=exp(x_i-max)/Σexp(x_j-max)\n三遍: 1.求max 2.求Σexp 3.除以sum\nOnline算法: 一遍求max+sum\n  遇到新max时修正之前的sum\nCUDA: 每block一行\n  parallel reduce求max→求sum→除", "topic": "Softmax", "day": "Day 19", "source": "Online Softmax论文"}
+      ]
+    },
+    "2-5-1": {
+      "key_points": [
+        "Roofline Model: 性能上限 = min(峰值算力, 带宽×算术强度)",
+        "算术强度(Arithmetic Intensity) = FLOPs / Bytes_transferred",
+        "Memory Bound: 算术强度低，性能被带宽限制(如element-wise操作)",
+        "Compute Bound: 算术强度高，性能被算力限制(如矩阵乘法TILE后)"
+      ],
+      "resources": [
+        {"name": "Roofline Model论文", "url": "https://www2.eecs.berkeley.edu/Pubs/TechRpts/2008/EECS-2008-134.pdf"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-5-01", "front": "Roofline Model的公式和两个bound？", "back": "性能上限 = min(峰值算力, 带宽×AI)\nAI(算术强度) = FLOPs / Bytes\n拐点: AI = 峰值算力/带宽\nMemory Bound: AI<拐点(element-wise)\n  优化: 减少访存(fusion)\nCompute Bound: AI>拐点(GEMM)\n  优化: 提高算力利用率", "topic": "性能分析", "day": "Day 20", "source": "Roofline论文"}
+      ]
+    },
+    "2-5-2": {
+      "key_points": [
+        "Nsight Compute: NVIDIA kernel级性能分析工具，分析每个kernel的瓶颈",
+        "关键指标: SM利用率、内存带宽利用率、算术强度、占用率",
+        "roofline图: 自动生成，直观看到kernel是memory bound还是compute bound",
+        "使用: ncu --set full -o report ./your_program，生成report.ncu-rep"
+      ],
+      "resources": [
+        {"name": "Nsight Compute文档", "url": "https://docs.nvidia.com/nsight-compute/"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-5-02", "front": "Nsight Compute能分析什么？", "back": "kernel级性能分析工具\n指标: SM利用率、内存带宽、算术强度\n自动生成roofline图\n判断kernel是memory/compute bound\n使用: ncu --set full -o report ./prog\n还有Nsight Systems: 系统级时间线分析", "topic": "性能分析", "day": "Day 20", "source": "Nsight Compute文档"}
+      ]
+    },
+    "2-6-1": {
+      "key_points": [
+        "Triton vs CUDA: Triton在block级编程(每个program处理一个数据块)，CUDA在thread级",
+        "自动优化: Triton编译器自动处理shared memory、coalescing、寄存器分配",
+        "tl.program_id(0): 类似blockIdx.x，获取当前program的ID",
+        "tl.load/tl.store: 向量化访存，自动处理边界(mask参数)"
+      ],
+      "resources": [
+        {"name": "Triton官方教程", "url": "https://triton-lang.org/main/getting-started/tutorials/"},
+        {"name": "Triton GitHub", "url": "https://github.com/triton-lang/triton"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-6-01", "front": "Triton和CUDA编程的核心区别？", "back": "CUDA: thread级编程\n  手动管理shared mem/coalescing\nTriton: block级编程\n  每个program处理一个数据块\n  编译器自动优化内存访问\nAPI: tl.program_id(axis)\n  tl.load(ptr, mask=...)\n  tl.store(ptr, val, mask=...)\n开发效率高5-10倍，性能接近手写CUDA", "topic": "Triton", "day": "Day 21", "source": "Triton教程"}
+      ]
+    },
+    "2-6-2": {
+      "key_points": [
+        "Triton vector_add: @triton.jit装饰器标记kernel，BLOCK_SIZE作为tl.constexpr",
+        "向量化: offsets = pid*BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)，一次处理BLOCK_SIZE个元素",
+        "边界处理: mask = offsets < n，tl.load(ptr+offsets, mask=mask)，越界位置不访问",
+        "grid定义: grid = lambda meta: (triton.cdiv(n, meta['BLOCK_SIZE']),)"
+      ],
+      "resources": [
+        {"name": "Triton vector_add教程", "url": "https://triton-lang.org/main/getting-started/tutorials/01-vector-add.html"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-6-02", "front": "Triton kernel的基本结构？", "back": "@triton.jit\ndef kernel(x_ptr,y_ptr,n,BLOCK:tl.constexpr):\n  pid = tl.program_id(0)\n  offs = pid*BLOCK + tl.arange(0,BLOCK)\n  mask = offs < n\n  x = tl.load(x_ptr+offs, mask=mask)\n  tl.store(y_ptr+offs, x+1, mask=mask)\ngrid = (triton.cdiv(n, BLOCK),)", "topic": "Triton", "day": "Day 21", "source": "Triton教程", "code": "@triton.jit\ndef add_kernel(x_ptr,y_ptr,out_ptr,n,BLOCK:tl.constexpr):\n  pid=tl.program_id(0)\n  offs=pid*BLOCK+tl.arange(0,BLOCK)\n  mask=offs<n\n  x=tl.load(x_ptr+offs,mask=mask)\n  y=tl.load(y_ptr+offs,mask=mask)\n  tl.store(out_ptr+offs,x+y,mask=mask)"}
+      ]
+    },
+    "2-6-3": {
+      "key_points": [
+        "Fused Softmax: 将max/sum/exp/div融合到一个kernel，避免多次global memory读写",
+        "每个program处理一行: 加载整行→求max→减max取exp→求sum→除以sum→写回",
+        "数值稳定: tl.max(row, axis=0)求行最大值，减去后再exp",
+        "vs 非fused: 3个kernel(max/exp_sum/div) → 3次global读+3次global写 → 1次读+1次写"
+      ],
+      "resources": [
+        {"name": "Triton Fused Softmax", "url": "https://triton-lang.org/main/getting-started/tutorials/02-fused-softmax.html"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-6-03", "front": "Fused Softmax为什么比分步Softmax快？", "back": "分步: 3个kernel\n  1.max(读+写) 2.exp_sum(读+写) 3.div(读+写)\n  = 3次global读 + 3次global写\nFused: 1个kernel\n  load→max→exp→sum→div→store\n  = 1次global读 + 1次global写\n访存减少3倍→速度提升2-3倍\n数值稳定: 减max后再exp", "topic": "Triton", "day": "Day 21", "source": "Triton教程"}
+      ]
+    },
+    "2-7-1": {
+      "key_points": [
+        "Triton GEMM: block-level tiling，每个program计算C的一个BLOCK_M×BLOCK_N子矩阵",
+        "循环K维: for k in range(0, K, BLOCK_K): 每次加载A的tile和B的tile，用tl.dot累加",
+        "tl.dot: Triton内置矩阵乘法原语，底层调用Tensor Core(FP16/BF16)",
+        "性能: 调优后可达cuBLAS的80-90%，关键参数BLOCK_M/N/K和num_warps"
+      ],
+      "resources": [
+        {"name": "Triton GEMM教程", "url": "https://triton-lang.org/main/getting-started/tutorials/03-matrix-multiplication.html"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-7-01", "front": "Triton矩阵乘法的tiling策略？", "back": "每个program算C的BLOCK_M×BLOCK_N块\nfor k in range(0,K,BLOCK_K):\n  a=tl.load(A tile) # BLOCK_M×BLOCK_K\n  b=tl.load(B tile) # BLOCK_K×BLOCK_N\n  acc += tl.dot(a, b)  # Tensor Core\ntl.store(C tile, acc)\n调优: BLOCK_M/N/K, num_warps\n性能达cuBLAS 80-90%", "topic": "Triton GEMM", "day": "Day 22", "source": "Triton GEMM教程"}
+      ]
+    },
+    "2-7-2": {
+      "key_points": [
+        "Triton LayerNorm: fused kernel，一次完成mean→var→normalize→scale→bias",
+        "每个program处理一行: 加载整行→算mean→算var→(x-mean)/sqrt(var+eps)*γ+β",
+        "两遍算法: 第一遍算mean，第二遍算var。或用Welford在线算法一遍完成",
+        "性能: fused LayerNorm比PyTorch的分步实现快2-4倍(减少global memory往返)"
+      ],
+      "resources": [
+        {"name": "Triton LayerNorm教程", "url": "https://triton-lang.org/main/getting-started/tutorials/05-layer-norm.html"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-7-02", "front": "Triton LayerNorm的fused实现？", "back": "每program处理一行:\n1. 加载整行到寄存器\n2. 算mean = tl.sum(x)/N\n3. 算var = tl.sum((x-mean)²)/N\n4. norm = (x-mean)/sqrt(var+eps)\n5. out = norm * gamma + beta\n6. store回global memory\nvs分步: 5个kernel→1个kernel\n速度提升2-4倍", "topic": "Triton", "day": "Day 22", "source": "Triton教程"}
+      ]
+    },
+    "2-8-1": {
+      "key_points": [
+        "Triton Puzzles 1-5: 基础算子练习，涵盖element-wise、reduce、broadcast等模式",
+        "Puzzle 1: 向量加法(基础索引)，Puzzle 2: 向量外积(2D索引)",
+        "Puzzle 3: 带mask的选择操作，Puzzle 4: 前缀和(scan)",
+        "关键技能: tl.arange, tl.load/store with mask, 2D block索引"
+      ],
+      "resources": [
+        {"name": "Triton Puzzles", "url": "https://github.com/srush/Triton-Puzzles"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-8-01", "front": "Triton中2D block索引怎么做？", "back": "row_offs = pid_m*BM + tl.arange(0,BM)\ncol_offs = pid_n*BN + tl.arange(0,BN)\n# 2D偏移\noffs = row_offs[:,None]*stride + col_offs[None,:]\n# mask\nmask = (row_offs[:,None]<M) & (col_offs[None,:]<N)\ndata = tl.load(ptr+offs, mask=mask)", "topic": "Triton Puzzles", "day": "Day 23", "source": "Triton-Puzzles"}
+      ]
+    },
+    "2-8-2": {
+      "key_points": [
+        "LeetCUDA: CUDA编程练习集，包含从基础到高级的kernel实现",
+        "涵盖: vector_add, reduce, GEMM, softmax, layernorm, attention等",
+        "每道题给出naive实现和优化目标(如达到cuBLAS的X%)",
+        "重点: 理解性能瓶颈(memory/compute bound)并针对性优化"
+      ],
+      "resources": [
+        {"name": "LeetCUDA GitHub", "url": "https://github.com/xlite-dev/LeetCUDA"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-8-02", "front": "CUDA kernel优化的一般步骤？", "back": "1. 写naive实现，确保正确\n2. ncu profile判断瓶颈\n3. Memory bound→减少访存\n  coalescing, shared mem tiling\n4. Compute bound→提高利用率\n  Tensor Core, 循环展开\n5. 其他: 减少sync, bank conflict\n6. 重复profile直到满意", "topic": "CUDA优化", "day": "Day 23", "source": "LeetCUDA"}
+      ]
+    },
+    "2-9-1": {
+      "key_points": [
+        "Triton Puzzles 6-10: 进阶算子，涵盖矩阵乘、卷积、attention等复杂模式",
+        "Puzzle 6-7: 矩阵乘法变体(转置、batch)",
+        "Puzzle 8-9: Softmax和归一化操作",
+        "Puzzle 10: 组合算子(multi-step computation)"
+      ],
+      "resources": [
+        {"name": "Triton Puzzles 6-10", "url": "https://github.com/srush/Triton-Puzzles"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-9-01", "front": "Triton中如何处理矩阵转置访问？", "back": "方法1: 调整stride\n  a_ptr + row*stride_am + col*stride_ak\n  转置时交换stride_am和stride_ak\n方法2: tl.trans(block)\n  对加载的block做转置\n关键: 保证coalesced访问\n  最内层维度连续访问", "topic": "Triton进阶", "day": "Day 24", "source": "Triton-Puzzles"}
+      ]
+    },
+    "2-9-2": {
+      "key_points": [
+        "FlashAttention核心: 将QKV分块(tiling)计算attention，避免存储完整N×N attention矩阵",
+        "IO-aware: 标准attention需O(N²)显存(存attention矩阵)，FlashAttention只需O(N)额外显存",
+        "Tiling+Recomputation: 前向时分块计算，不存中间attention矩阵。反向时重新计算(用时间换空间)",
+        "在线Softmax: 分块计算时需要在线更新softmax的max和sum，保证数值等价"
+      ],
+      "resources": [
+        {"name": "FlashAttention论文", "url": "https://arxiv.org/abs/2205.14135"},
+        {"name": "FlashAttention详解博客", "url": "https://gordicaleksa.medium.com/eli5-flash-attention-5c44017022ad"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-9-02", "front": "FlashAttention的核心思想和优势？", "back": "问题: 标准attention需O(N²)显存\nFlashAttention: tiling分块计算\n  不存N×N attention矩阵\n  显存从O(N²)降到O(N)\nIO-aware: 减少HBM访问次数\n  将QKV分块加载到SRAM计算\nRecomputation: 反向时重算attention\n  用时间(重算)换空间(不存)\n速度: 快2-4倍(减少IO)", "topic": "FlashAttention", "day": "Day 24", "source": "FlashAttention论文"}
+      ]
+    },
+    "2-10-1": {
+      "key_points": [
+        "Triton Puzzles 11-13: 高级算子，涉及FlashAttention、自定义backward等",
+        "Puzzle 11: 简化版attention(无mask)",
+        "Puzzle 12: 带causal mask的attention",
+        "Puzzle 13: 自定义gradient计算(backward kernel)"
+      ],
+      "resources": [
+        {"name": "Triton Puzzles 11-13", "url": "https://github.com/srush/Triton-Puzzles"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-10-01", "front": "Triton中如何实现causal mask？", "back": "# 在attention计算中\nq_offs = pid_m * BM + tl.arange(0, BM)\nk_offs = start_k + tl.arange(0, BN)\nmask = q_offs[:, None] >= k_offs[None, :]\nscores = tl.where(mask, scores, float('-inf'))\n# softmax后-inf变0，自动causal", "topic": "Triton进阶", "day": "Day 25", "source": "Triton-Puzzles"}
+      ]
+    },
+    "2-10-2": {
+      "key_points": [
+        "Triton Fused Attention: 完整实现FlashAttention的Triton版本",
+        "前向: 外层循环Q blocks，内层循环KV blocks，在线更新softmax",
+        "关键变量: m_i(当前max), l_i(当前sum), acc(累积输出)，每处理一个KV block更新",
+        "反向: 需要recompute attention矩阵(从Q,K,V重新计算)，计算dQ,dK,dV"
+      ],
+      "resources": [
+        {"name": "Triton Fused Attention", "url": "https://triton-lang.org/main/getting-started/tutorials/06-fused-attention.html"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-10-02", "front": "FlashAttention的在线Softmax更新公式？", "back": "处理新KV block时:\nm_new = max(m_old, max(scores_new))\nl_new = l_old*exp(m_old-m_new) + sum(exp(scores_new-m_new))\nacc_new = acc_old*exp(m_old-m_new)/l_new + exp(scores_new-m_new)@V/l_new\n最终: O = acc (数值等价于标准softmax)", "topic": "FlashAttention", "day": "Day 25", "source": "Triton教程"}
+      ]
+    },
+    "2-11-1": {
+      "key_points": [
+        "Fused RMSNorm: 将RMSNorm的所有步骤融合到一个Triton kernel",
+        "步骤: 加载x→计算mean(x²)→rsqrt(mean+eps)→x*norm*weight→写回",
+        "vs PyTorch: 减少多次global memory读写，速度提升2-3倍",
+        "实现要点: 每个program处理一行，weight参数广播到每个元素"
+      ],
+      "resources": [
+        {"name": "Liger-Kernel RMSNorm", "url": "https://github.com/linkedin/Liger-Kernel/blob/main/src/liger_kernel/ops/rms_norm.py"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-11-01", "front": "如何用Triton实现Fused RMSNorm？", "back": "@triton.jit\ndef rms_norm_kernel(x_ptr,w_ptr,out_ptr,N,eps,BLOCK:tl.constexpr):\n  row = tl.program_id(0)\n  offs = tl.arange(0,BLOCK)\n  x = tl.load(x_ptr+row*N+offs, mask=offs<N)\n  rms = tl.sqrt(tl.sum(x*x)/N + eps)\n  w = tl.load(w_ptr+offs, mask=offs<N)\n  tl.store(out_ptr+row*N+offs, x/rms*w, mask=offs<N)", "topic": "Triton实战", "day": "Day 26", "source": "Liger-Kernel"}
+      ]
+    },
+    "2-11-2": {
+      "key_points": [
+        "Liger-Kernel: LinkedIn开源的Triton kernel集合，优化LLM训练中的常用算子",
+        "涵盖: RMSNorm, CrossEntropy, FusedLinearCrossEntropy, SwiGLU, RoPE等",
+        "FusedLinearCrossEntropy: 将最后的Linear+CrossEntropy融合，避免存vocab_size大小的logits",
+        "使用方式: monkey-patch替换HuggingFace模型中的对应模块"
+      ],
+      "resources": [
+        {"name": "Liger-Kernel GitHub", "url": "https://github.com/linkedin/Liger-Kernel"},
+        {"name": "Liger-Kernel论文", "url": "https://arxiv.org/abs/2410.10989"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-11-02", "front": "Liger-Kernel的FusedLinearCrossEntropy解决什么问题？", "back": "问题: LM_Head输出logits维度=vocab_size(32K-100K+)\n存储logits需大量显存(batch×seq×vocab×4B)\nFused: 不存完整logits\n  分块计算Linear→softmax→CrossEntropy\n  每次只存一小块logits\n显存节省~30%，速度快20%", "topic": "Kernel优化", "day": "Day 26", "source": "Liger-Kernel"}
+      ]
+    },
+    "2-12-1": {
+      "key_points": [
+        "GPU编程全流程: 理解硬件→写naive kernel→profile→优化→达到合理性能",
+        "CUDA vs Triton: CUDA更灵活(thread级)，Triton更高效(block级自动优化)",
+        "关键概念: Roofline(判断瓶颈)、Tiling(减少访存)、Fusion(减少kernel launch)",
+        "实战能力: vector_add→reduce→GEMM→softmax→attention→LayerNorm→RMSNorm"
+      ],
+      "resources": [
+        {"name": "GPU编程总结", "url": "https://github.com/HeKun-NVIDIA/CUDA-Programming"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-12-01", "front": "GPU kernel优化的三大核心策略？", "back": "1. Tiling: 数据分块加载到shared mem\n  减少global memory访问次数\n2. Fusion: 多步操作合并为一个kernel\n  减少kernel launch和global读写\n3. Coalescing: 同warp线程访问连续地址\n  一次传输128B(cache line)\n判断方向: Roofline Model\n工具: Nsight Compute", "topic": "总结", "day": "Day 27", "source": "GPU编程总结"}
+      ]
+    },
+    "2-12-2": {
+      "key_points": [
+        "性能报告要素: kernel名称、问题规模、执行时间、带宽利用率、算力利用率",
+        "对比基线: naive vs optimized vs cuBLAS/cuDNN，计算加速比",
+        "Roofline定位: 在roofline图上标注每个kernel，说明是memory/compute bound",
+        "优化记录: 每步优化做了什么、性能提升多少、为什么有效"
+      ],
+      "resources": [
+        {"name": "Nsight Compute报告", "url": "https://docs.nvidia.com/nsight-compute/"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-12-02", "front": "如何写kernel性能分析报告？", "back": "1. 问题描述: kernel功能和输入规模\n2. 基线性能: naive实现的时间和利用率\n3. 优化步骤: 每步做了什么+提升\n4. Roofline图: 标注kernel位置\n5. 对比: vs cuBLAS达到X%\n6. 结论: 瓶颈在哪、还能优化什么", "topic": "性能分析", "day": "Day 27", "source": "Nsight Compute"}
+      ]
+    },
+    "2-12-3": {
+      "key_points": [
+        "FlashAttention-2改进: 1.减少非GEMM计算 2.优化并行策略(沿seq_len并行) 3.更好的warp分配",
+        "并行维度: FA-1沿batch*heads并行，FA-2额外沿seq_len并行(更多block)",
+        "Warp专门化: 不同warp负责GEMM和softmax，减少warp间同步",
+        "性能: 比FA-1快约2倍，达到理论FLOPS的50-73%"
+      ],
+      "resources": [
+        {"name": "FlashAttention-2论文", "url": "https://arxiv.org/abs/2307.08691"}
+      ],
+      "flashcards": [
+        {"id": "fc-2-12-03", "front": "FlashAttention-2比FA-1快在哪？", "back": "改进1: 减少非GEMM计算(softmax分步)\n改进2: 沿seq_len额外并行(更多block)\n  FA-1: batch×heads个block\n  FA-2: batch×heads×ceil(seq/BM)个block\n改进3: warp专门化(GEMM/softmax分离)\n结果: ~2倍速度，达理论FLOPS 50-73%", "topic": "FlashAttention", "day": "Day 27", "source": "FlashAttention-2论文"}
+      ]
+    }
+  }
+}

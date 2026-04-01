@@ -1,0 +1,147 @@
+{
+  "topics": [
+    {
+      "id": "open-1",
+      "title": "Speculative Decoding进阶",
+      "desc": "研究Medusa/EAGLE/Lookahead等推测解码变体",
+      "resources": [
+        {"name": "Medusa论文", "url": "https://arxiv.org/abs/2401.10774"},
+        {"name": "EAGLE论文", "url": "https://arxiv.org/abs/2401.15077"}
+      ],
+      "tags": ["推理优化", "论文"]
+    },
+    {
+      "id": "open-2",
+      "title": "SGLang深入学习",
+      "desc": "学习SGLang的RadixAttention和结构化输出优化",
+      "resources": [
+        {"name": "SGLang GitHub", "url": "https://github.com/sgl-project/sglang"},
+        {"name": "SGLang论文", "url": "https://arxiv.org/abs/2312.07104"}
+      ],
+      "tags": ["推理引擎", "源码"]
+    },
+    {
+      "id": "open-3",
+      "title": "FlashInfer源码阅读",
+      "desc": "阅读FlashInfer的PagedAttention kernel实现",
+      "resources": [
+        {"name": "FlashInfer GitHub", "url": "https://github.com/flashinfer-ai/flashinfer"}
+      ],
+      "tags": ["kernel", "源码"]
+    },
+    {
+      "id": "open-4",
+      "title": "Megatron-LM分布式训练",
+      "desc": "学习Megatron的TP/PP/CP/SP并行策略",
+      "resources": [
+        {"name": "Megatron-LM GitHub", "url": "https://github.com/NVIDIA/Megatron-LM"},
+        {"name": "Megatron论文", "url": "https://arxiv.org/abs/1909.08053"}
+      ],
+      "tags": ["分布式", "训练"]
+    },
+    {
+      "id": "open-5",
+      "title": "Ring Attention长序列训练",
+      "desc": "理解Ring Attention如何在多GPU上处理超长序列",
+      "resources": [
+        {"name": "Ring Attention论文", "url": "https://arxiv.org/abs/2310.01889"}
+      ],
+      "tags": ["分布式", "论文"]
+    },
+    {
+      "id": "open-6",
+      "title": "给vLLM提PR",
+      "desc": "从good first issue开始，给vLLM贡献代码",
+      "resources": [
+        {"name": "vLLM Issues", "url": "https://github.com/vllm-project/vllm/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22"}
+      ],
+      "tags": ["开源贡献", "实践"]
+    },
+    {
+      "id": "open-7",
+      "title": "MLSys论文精读",
+      "desc": "精读一篇MLSys/OSDI/SOSP/ATC顶会论文",
+      "resources": [
+        {"name": "MLSys 2024论文列表", "url": "https://proceedings.mlsys.org/"}
+      ],
+      "tags": ["论文", "系统"]
+    },
+    {
+      "id": "open-8",
+      "title": "量化技术进阶",
+      "desc": "学习GPTQ/SqueezeLLM/QuIP等量化方法",
+      "resources": [
+        {"name": "GPTQ论文", "url": "https://arxiv.org/abs/2210.17323"},
+        {"name": "量化综述", "url": "https://arxiv.org/abs/2308.07633"}
+      ],
+      "tags": ["量化", "论文"]
+    },
+    {
+      "id": "open-9",
+      "title": "AI Infra面试题刷题",
+      "desc": "整理和练习AI Infra高频面试题",
+      "resources": [
+        {"name": "AI Infra面试题集", "url": "https://github.com/datawhalechina/so-large-lm"}
+      ],
+      "tags": ["面试", "复习"]
+    },
+    {
+      "id": "open-10",
+      "title": "DeepSpeed进阶",
+      "desc": "学习DeepSpeed的ZeRO-Infinity和Ulysses长序列并行",
+      "resources": [
+        {"name": "DeepSpeed GitHub", "url": "https://github.com/microsoft/DeepSpeed"},
+        {"name": "Ulysses论文", "url": "https://arxiv.org/abs/2309.14509"}
+      ],
+      "tags": ["分布式", "训练"]
+    },
+    {
+      "id": "open-11",
+      "title": "LLM Agent框架",
+      "desc": "学习LangChain/LlamaIndex/AutoGen等Agent框架",
+      "resources": [
+        {"name": "LangChain", "url": "https://github.com/langchain-ai/langchain"},
+        {"name": "LlamaIndex", "url": "https://github.com/run-llama/llama_index"}
+      ],
+      "tags": ["应用", "框架"]
+    },
+    {
+      "id": "open-12",
+      "title": "Continuous Batching优化",
+      "desc": "研究Sarathi/Splitwise等调度优化方法",
+      "resources": [
+        {"name": "Sarathi-Serve论文", "url": "https://arxiv.org/abs/2403.02310"},
+        {"name": "Splitwise论文", "url": "https://arxiv.org/abs/2311.18677"}
+      ],
+      "tags": ["推理优化", "论文"]
+    },
+    {
+      "id": "open-13",
+      "title": "MoE推理优化",
+      "desc": "学习MoE模型的推理挑战和优化方法(Expert Parallel, EP+TP)",
+      "resources": [
+        {"name": "Mixtral论文", "url": "https://arxiv.org/abs/2401.04088"}
+      ],
+      "tags": ["推理优化", "MoE"]
+    },
+    {
+      "id": "open-14",
+      "title": "GitHub Trending AI项目研究",
+      "desc": "浏览本周GitHub Trending的AI项目，选一个深入研究",
+      "resources": [
+        {"name": "GitHub Trending", "url": "https://github.com/trending?since=weekly&spoken_language_code=&language=python"}
+      ],
+      "tags": ["探索", "开源"]
+    },
+    {
+      "id": "open-15",
+      "title": "KV Cache压缩技术",
+      "desc": "学习KV Cache量化、稀疏化、蒸馏等压缩方法",
+      "resources": [
+        {"name": "KIVI论文(KV Cache量化)", "url": "https://arxiv.org/abs/2402.02750"},
+        {"name": "H2O论文(KV Cache稀疏)", "url": "https://arxiv.org/abs/2306.14048"}
+      ],
+      "tags": ["推理优化", "论文"]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(gh repo:*)",
+      "Bash(gh api:*)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(curl -s https://api.github.com/repos/sxvvv/notes/contents)",
+      "Bash(curl -s https://api.github.com/repos/sxvvv/notes/commits?per_page=10)",
+      "Bash(python3 -c ':*)",
+      "Bash(curl -s \"https://api.github.com/repos/sxvvv/notes/contents/Triton\")",
+      "Bash(curl -s \"https://api.github.com/repos/sxvvv/notes/contents/llm_paper_note\")",
+      "Bash(curl -s \"https://api.github.com/repos/sxvvv/notes/contents/nlp-notes\")",
+      "Bash(curl -s \"https://api.github.com/repos/sxvvv/notes/commits?per_page=10\")",
+      "Bash(node -e ':*)",
+      "Bash(curl -s \"https://api.github.com/repos/sxvvv/notes/contents/clip%E5%9F%BA%E7%A1%80\")",
+      "Bash(curl -s \"https://api.github.com/repos/sxvvv/notes\")",
+      "Bash(python study.py help)",
+      "Bash(python -c \"from tracker import get_current_day, is_open_mode, get_days_until_job, TOTAL_DAYS; print\\('TOTAL_DAYS:', TOTAL_DAYS\\); print\\('is_open_mode\\(85\\):', is_open_mode\\(85\\)\\); print\\('is_open_mode\\(50\\):', is_open_mode\\(50\\)\\)\")",
+      "Bash(python -c \"from notifier import push_feishu; print\\('push_feishu imported successfully'\\)\")",
+      "Bash(python -c \"from fetcher import fetch_daily_recommendations, format_recommendations; print\\('fetcher imported successfully'\\)\")",
+      "Bash(python -c \"from github_sync import resolve_topic_dir, sync_note; print\\('github_sync imported successfully'\\); print\\('triton ->', resolve_topic_dir\\('triton'\\)\\); print\\('llm ->', resolve_topic_dir\\('llm'\\)\\)\")",
+      "Bash(python study.py feed)",
+      "Bash(python study.py status)",
+      "Bash(python study.py sync)",
+      "Bash(python -c ':*)",
+      "Bash(python study.py remind 09:00)",
+      "Bash(python study.py notify)",
+      "Bash(python study.py today)",
+      "Bash(python study.py done 1-1-1)",
+      "Bash(python study.py done 1-1-2)",
+      "WebFetch(domain:kcnd4kn8i6ap.feishu.cn)",
+      "Bash(python study.py flash)",
+      "Bash(python study.py flash-answer fc-1-1-01)",
+      "Bash(python study.py flash-ok fc-1-1-01)",
+      "Bash(python study.py flash-fail fc-1-1-02)",
+      "Bash(python study.py flash-stats)",
+      "Bash(python study.py refresh)",
+      "Bash(python study.py remind 07:30)"
+    ]
+  }
+}

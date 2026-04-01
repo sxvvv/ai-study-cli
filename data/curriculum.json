@@ -1,0 +1,935 @@
+{
+  "total_days": 84,
+  "phases": [
+    {
+      "id": 1,
+      "name": "LLM从零理解",
+      "days": [1, 15],
+      "tasks": [
+        {
+          "day": 1,
+          "infra": [
+            {
+              "id": "1-1-1", "type": "read", "title": "Transformer原理精读(Attention Is All You Need)", "duration_min": 90,
+              "desc": "重点理解Self-Attention、Multi-Head、Position Encoding",
+              "key_points": [
+                "Attention(Q,K,V) = softmax(QK^T / sqrt(d_k)) V — 理解每个符号含义",
+                "Multi-Head: 将d_model拆成h个头，每个头独立做attention再拼接",
+                "Encoder-Decoder结构 vs Decoder-only(GPT) — MiniMind用的是哪种？",
+                "Position Encoding: 为什么需要？sin/cos编码的直觉是什么？"
+              ],
+              "resources": [
+                {"name": "so-large-lm Transformer结构详解", "url": "https://github.com/datawhalechina/so-large-lm/blob/main/docs/chapter2/1.transformer%E7%BB%93%E6%9E%84.md"},
+                {"name": "so-large-lm Attention机制", "url": "https://github.com/datawhalechina/so-large-lm/blob/main/docs/chapter2/2.attention%E6%9C%BA%E5%88%B6.md"},
+                {"name": "Jay Alammar: The Illustrated Transformer", "url": "https://jalammar.github.io/illustrated-transformer/"},
+                {"name": "3Blue1Brown: Attention可视化", "url": "https://www.bilibili.com/video/BV1TZ421j7Ke"}
+              ]
+            },
+            {
+              "id": "1-1-2", "type": "practice", "title": "MiniMind环境搭建+推理测试", "duration_min": 60,
+              "desc": "clone minimind仓库，pip install，运行推理测试",
+              "key_points": [
+                "git clone https://github.com/jingyaogong/minimind → pip install -r requirements.txt",
+                "运行 python inference.py 测试生成效果",
+                "观察model/config.py中的LMConfig: dim=512, n_layers=8, n_heads=16, vocab_size=6400",
+                "思考: 26M参数是怎么算出来的？(embedding + n_layers * (attention + ffn))"
+              ],
+              "resources": [
+                {"name": "MiniMind GitHub 仓库", "url": "https://github.com/jingyaogong/minimind"},
+                {"name": "MiniMind model/model.py 核心实现", "url": "https://github.com/jingyaogong/minimind/blob/master/model/model.py"}
+              ]
+            },
+            {
+              "id": "1-1-3", "type": "read", "title": "MiniMind项目README通读", "duration_min": 30,
+              "desc": "理解项目结构、训练流程全景图",
+              "key_points": [
+                "训练流程: Pretrain → SFT → LoRA/DPO/RLHF — 每步的目标是什么？",
+                "数据格式: pretrain用t2t(text-to-text), sft用对话格式",
+                "模型架构公式: Transformer + RoPE + RMSNorm + SwiGLU + GQA",
+                "目录结构: model/目录放模型代码, scripts/放数据处理, train_*.py是训练入口"
+              ],
+              "resources": [
+                {"name": "MiniMind README", "url": "https://github.com/jingyaogong/minimind/blob/master/README.md"}
+              ]
+            }
+          ],
+          "algo": [
+            {"id": "1-1-a1", "type": "leetcode", "title": "LRU Cache (LC146)", "url": "https://leetcode.cn/problems/lru-cache/", "duration_min": 45}
+          ]
+        },
+        {
+          "day": 2,
+          "infra": [
+            {
+              "id": "1-2-1", "type": "practice", "title": "MiniMind模块实验: RMSNorm", "duration_min": 60,
+              "desc": "理解RMSNorm为什么替代LayerNorm",
+              "key_points": [
+                "RMSNorm公式: x * weight / sqrt(mean(x^2) + eps) — 比LayerNorm省去了减均值",
+                "看 model/model.py 中 RMSNorm 类的实现，只有~5行代码",
+                "实验: 打印RMSNorm前后tensor的分布变化",
+                "思考: 为什么LLaMA/MiniMind用Pre-Norm而不是Post-Norm？"
+              ],
+              "resources": [
+                {"name": "MiniMind model.py (RMSNorm实现)", "url": "https://github.com/jingyaogong/minimind/blob/master/model/model.py"},
+                {"name": "so-large-lm Transformer结构(含Norm讲解)", "url": "https://github.com/datawhalechina/so-large-lm/blob/main/docs/chapter2/1.transformer%E7%BB%93%E6%9E%84.md"}
+              ]
+            },
+            {
+              "id": "1-2-2", "type": "practice", "title": "MiniMind模块实验: RoPE位置编码", "duration_min": 60,
+              "desc": "理解旋转位置编码的数学直觉",
+              "key_points": [
+                "RoPE核心: 把位置信息编码为旋转矩阵，让attention分数自然包含相对位置",
+                "公式: f(q,m) = R(m)q, 其中R是旋转矩阵，m是位置",
+                "看 model/model.py 中 precompute_pos_cis() 和 apply_rotary_emb()",
+                "对比: 绝对位置编码(learned) vs RoPE vs ALiBi"
+              ],
+              "resources": [
+                {"name": "so-large-lm 位置编码专章", "url": "https://github.com/datawhalechina/so-large-lm/blob/main/docs/chapter2/3.%E4%BD%8D%E7%BD%AE%E7%BC%96%E7%A0%81.md"},
+                {"name": "baby-llama2 RoPE实现(最清晰)", "url": "https://github.com/DLLXW/baby-llama2-chinese/blob/main/model.py"},
+                {"name": "B站: RoPE旋转位置编码详解", "url": "https://www.bilibili.com/video/BV1fJ4m1u7qg"}
+              ]
+            },
+            {
+              "id": "1-2-3", "type": "read", "title": "MiniMind model.py 源码精读", "duration_min": 60,
+              "desc": "逐类理解完整的Transformer Decoder实现",
+              "key_points": [
+                "Attention类: GQA(Grouped Query Attention)的n_kv_heads < n_heads，共享KV",
+                "FeedForward类: SwiGLU — w2(silu(w1(x)) * w3(x))，比ReLU效果好",
+                "MiniMindBlock: PreNorm → Attention → Residual → PreNorm → FFN → Residual",
+                "MiniMindLM: Embedding → N * Block → RMSNorm → LM_Head(与Embedding共享权重)"
+              ],
+              "resources": [
+                {"name": "MiniMind model/model.py", "url": "https://github.com/jingyaogong/minimind/blob/master/model/model.py"},
+                {"name": "MiniMind model/config.py (参数配置)", "url": "https://github.com/jingyaogong/minimind/blob/master/model/config.py"}
+              ]
+            }
+          ],
+          "algo": []
+        },
+        {
+          "day": 3,
+          "infra": [
+            {
+              "id": "1-3-1", "type": "practice", "title": "MiniMind模块实验: Attention机制", "duration_min": 60,
+              "desc": "深入理解QKV计算、mask和GQA",
+              "key_points": [
+                "Attention计算步骤: Q=xWq, K=xWk, V=xWv → scores=QK^T/sqrt(dk) → mask → softmax → output=scores*V",
+                "Causal Mask: 下三角矩阵，让模型只能看到左边的token(自回归)",
+                "GQA: 8个Q头共享2个KV头(n_heads=8, n_kv_heads=2) → 减少KV cache内存",
+                "KV Cache: 推理时缓存已计算的K,V，新token只需计算增量"
+              ],
+              "resources": [
+                {"name": "MiniMind Attention实现", "url": "https://github.com/jingyaogong/minimind/blob/master/model/model.py"},
+                {"name": "so-large-lm Attention机制", "url": "https://github.com/datawhalechina/so-large-lm/blob/main/docs/chapter2/2.attention%E6%9C%BA%E5%88%B6.md"}
+              ]
+            },
+            {
+              "id": "1-3-2", "type": "read", "title": "MiniMind Tokenizer原理", "duration_min": 45,
+              "desc": "理解BPE分词算法和vocab构建",
+              "key_points": [
+                "BPE(Byte Pair Encoding): 从字符级开始，反复合并最频繁的相邻pair",
+                "MiniMind用vocab_size=6400的小词表(GPT-4用100k+)",
+                "看scripts/train_tokenizer.py: 如何从语料训练出tokenizer",
+                "encode('你好世界') → token_ids → 查vocab表验证"
+              ],
+              "resources": [
+                {"name": "MiniMind train_tokenizer.py", "url": "https://github.com/jingyaogong/minimind/blob/master/scripts/train_tokenizer.py"}
+              ]
+            },
+            {
+              "id": "1-3-3", "type": "summary", "title": "Transformer核心组件总结", "duration_min": 45,
+              "desc": "用自己的话写清楚每个组件解决什么问题",
+              "key_points": [
+                "RMSNorm → 解决: 训练不稳定(梯度消失/爆炸)，比LayerNorm计算更快",
+                "RoPE → 解决: 让模型理解token的相对位置，支持外推到更长序列",
+                "GQA → 解决: KV Cache内存过大，用更少的KV头节省显存",
+                "SwiGLU → 解决: FFN激活函数，比ReLU/GELU效果更好，但参数多33%",
+                "写成笔记推到GitHub: study note llm \"Day3-Transformer组件总结\""
+              ],
+              "resources": []
+            }
+          ],
+          "algo": [
+            {"id": "1-3-a1", "type": "leetcode", "title": "LFU Cache (LC460)", "url": "https://leetcode.cn/problems/lfu-cache/", "duration_min": 45}
+          ]
+        },
+        {
+          "day": 4,
+          "infra": [
+            {"id": "1-4-1", "type": "practice", "title": "MiniMind Pretrain: 下载数据+启动训练", "desc": "下载pretrain_t2t_mini.jsonl，运行train_pretrain.py", "duration_min": 90},
+            {"id": "1-4-2", "type": "read", "title": "train_pretrain.py 源码精读", "desc": "理解数据加载、loss计算、梯度更新流程", "duration_min": 60},
+            {"id": "1-4-3", "type": "read", "title": "CSAPP第9章: 虚拟内存(前半)", "desc": "理解虚拟地址空间、页表、TLB，为PagedAttention做铺垫", "duration_min": 30}
+          ],
+          "algo": []
+        },
+        {
+          "day": 5,
+          "infra": [
+            {"id": "1-5-1", "type": "practice", "title": "MiniMind Pretrain训练完成+评估", "desc": "检查loss曲线，运行eval评估预训练效果", "duration_min": 60},
+            {"id": "1-5-2", "type": "read", "title": "预训练数据工程理解", "desc": "理解数据清洗、去重、配比策略，参考diy-llm数据工程章节", "duration_min": 60},
+            {"id": "1-5-3", "type": "read", "title": "CSAPP第9章: 虚拟内存(后半)", "desc": "理解分页机制、page fault、内存映射", "duration_min": 30}
+          ],
+          "algo": [
+            {"id": "1-5-a1", "type": "leetcode", "title": "用队列实现栈 (LC225)", "url": "https://leetcode.cn/problems/implement-stack-using-queues/", "duration_min": 30}
+          ]
+        },
+        {
+          "day": 6,
+          "infra": [
+            {"id": "1-6-1", "type": "practice", "title": "MiniMind SFT: 指令微调训练", "desc": "下载sft_t2t_mini.jsonl，运行train_full_sft.py", "duration_min": 90},
+            {"id": "1-6-2", "type": "read", "title": "SFT数据格式与Chat Template理解", "desc": "理解对话模板、system/user/assistant角色、loss mask", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 7,
+          "infra": [
+            {"id": "1-7-1", "type": "practice", "title": "MiniMind SFT评估+对话测试", "desc": "加载SFT权重进行多轮对话，对比Pretrain效果", "duration_min": 60},
+            {"id": "1-7-2", "type": "read", "title": "train_full_sft.py 源码精读", "desc": "理解SFT和Pretrain在代码层面的区别", "duration_min": 60},
+            {"id": "1-7-3", "type": "summary", "title": "Pretrain vs SFT 对比总结", "desc": "写清楚:数据格式差异、loss计算差异、模型行为差异", "duration_min": 30}
+          ],
+          "algo": [
+            {"id": "1-7-a1", "type": "leetcode", "title": "前K个高频元素 (LC347)", "url": "https://leetcode.cn/problems/top-k-frequent-elements/", "duration_min": 40}
+          ]
+        },
+        {
+          "day": 8,
+          "infra": [
+            {"id": "1-8-1", "type": "read", "title": "LoRA原理精读", "desc": "理解低秩分解思想、为什么只调QV、rank选择", "duration_min": 60},
+            {"id": "1-8-2", "type": "practice", "title": "MiniMind LoRA微调训练", "desc": "运行train_lora.py，对比全参数微调", "duration_min": 90}
+          ],
+          "algo": []
+        },
+        {
+          "day": 9,
+          "infra": [
+            {"id": "1-9-1", "type": "read", "title": "DPO论文精读", "desc": "理解DPO如何绕过Reward Model直接优化策略", "duration_min": 90},
+            {"id": "1-9-2", "type": "practice", "title": "MiniMind DPO训练", "desc": "运行train_dpo.py，理解preference数据格式", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "1-9-a1", "type": "leetcode", "title": "数据流的中位数 (LC295)", "url": "https://leetcode.cn/problems/find-median-from-data-stream/", "duration_min": 45}
+          ]
+        },
+        {
+          "day": 10,
+          "infra": [
+            {"id": "1-10-1", "type": "read", "title": "InstructGPT/RLHF论文精读", "desc": "理解PPO在LLM中的应用:SFT→RM→PPO三阶段", "duration_min": 90},
+            {"id": "1-10-2", "type": "read", "title": "DeepSeek-R1技术报告精读", "desc": "重点理解GRPO算法:如何去掉Critic模型", "duration_min": 90}
+          ],
+          "algo": []
+        },
+        {
+          "day": 11,
+          "infra": [
+            {"id": "1-11-1", "type": "practice", "title": "MiniMind PPO训练", "desc": "运行train_ppo.py，观察reward曲线变化", "duration_min": 90},
+            {"id": "1-11-2", "type": "read", "title": "train_ppo.py 源码精读", "desc": "理解Actor/Critic更新逻辑、GAE计算", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "1-11-a1", "type": "leetcode", "title": "合并K个升序链表 (LC23)", "url": "https://leetcode.cn/problems/merge-k-sorted-lists/", "duration_min": 40}
+          ]
+        },
+        {
+          "day": 12,
+          "infra": [
+            {"id": "1-12-1", "type": "practice", "title": "MiniMind GRPO训练", "desc": "运行train_grpo.py，对比PPO效果和训练稳定性", "duration_min": 90},
+            {"id": "1-12-2", "type": "summary", "title": "PPO vs DPO vs GRPO对比总结", "desc": "写清楚三者的优劣、适用场景、计算开销差异", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 13,
+          "infra": [
+            {"id": "1-13-1", "type": "read", "title": "MiniMind-V架构理解", "desc": "阅读README，理解CLIP视觉编码器+线性投影+LLM架构", "duration_min": 60},
+            {"id": "1-13-2", "type": "practice", "title": "MiniMind-V环境搭建+推理测试", "desc": "clone minimind-v仓库，跑通图片描述推理", "duration_min": 60},
+            {"id": "1-13-3", "type": "read", "title": "vision_utils.py 源码精读", "desc": "理解CLIP特征提取和50个visual token的生成过程", "duration_min": 45}
+          ],
+          "algo": [
+            {"id": "1-13-a1", "type": "leetcode", "title": "实现Trie前缀树 (LC208)", "url": "https://leetcode.cn/problems/implement-trie-prefix-tree/", "duration_min": 40}
+          ]
+        },
+        {
+          "day": 14,
+          "infra": [
+            {"id": "1-14-1", "type": "practice", "title": "MiniMind-V训练: 视觉-语言对齐", "desc": "运行VLM训练脚本，理解图文对齐微调流程", "duration_min": 120},
+            {"id": "1-14-2", "type": "read", "title": "MiniMind MoE结构理解", "desc": "阅读MoE相关代码，理解Expert路由和负载均衡loss", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 15,
+          "infra": [
+            {"id": "1-15-1", "type": "summary", "title": "第一层通关总结", "desc": "画出LLM全流程图:Pretrain→SFT→LoRA→DPO/PPO/GRPO，标注数据流", "duration_min": 60},
+            {"id": "1-15-2", "type": "practice", "title": "MiniMind DDP多卡训练(可选)", "desc": "如有多卡，尝试torchrun启动DDP训练", "duration_min": 60},
+            {"id": "1-15-3", "type": "summary", "title": "知识梳理:Dense vs MoE vs VLM", "desc": "用自己的话讲清三种架构的区别和适用场景", "duration_min": 30}
+          ],
+          "algo": [
+            {"id": "1-15-a1", "type": "leetcode", "title": "键值映射 (LC677)", "url": "https://leetcode.cn/problems/map-sum-pairs/", "duration_min": 30}
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "GPU编程 CUDA/Triton",
+      "days": [16, 27],
+      "tasks": [
+        {
+          "day": 16,
+          "infra": [
+            {"id": "2-1-1", "type": "read", "title": "GPU硬件架构入门", "desc": "阅读GPU编程入门手册，理解SM/Warp/Thread层次", "duration_min": 90},
+            {"id": "2-1-2", "type": "practice", "title": "CUDA Hello World: vector_add", "desc": "写第一个CUDA kernel:向量加法，理解<<<grid,block>>>", "duration_min": 60},
+            {"id": "2-1-3", "type": "read", "title": "CSAPP第5章: 程序优化(前半)", "desc": "理解循环展开、流水线、分支预测基础", "duration_min": 30}
+          ],
+          "algo": []
+        },
+        {
+          "day": 17,
+          "infra": [
+            {"id": "2-2-1", "type": "practice", "title": "CUDA: reduce求和kernel", "desc": "实现parallel reduction，理解warp级同步", "duration_min": 90},
+            {"id": "2-2-2", "type": "read", "title": "CUDA内存模型", "desc": "理解global/shared/register/constant memory层次", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "2-2-a1", "type": "leetcode", "title": "二分查找 (LC704)", "url": "https://leetcode.cn/problems/binary-search/", "duration_min": 20}
+          ]
+        },
+        {
+          "day": 18,
+          "infra": [
+            {"id": "2-3-1", "type": "practice", "title": "CUDA: 矩阵乘法(naive版)", "desc": "实现naive GEMM kernel，benchmark vs cuBLAS", "duration_min": 90},
+            {"id": "2-3-2", "type": "practice", "title": "CUDA: 矩阵乘法(共享内存tiling)", "desc": "用shared memory做tiling优化，对比性能提升", "duration_min": 90}
+          ],
+          "algo": []
+        },
+        {
+          "day": 19,
+          "infra": [
+            {"id": "2-4-1", "type": "read", "title": "CSAPP第6章: 存储器层次结构", "desc": "理解cache line、局部性原理、cache miss", "duration_min": 60},
+            {"id": "2-4-2", "type": "practice", "title": "CUDA: Softmax kernel", "desc": "实现numerically stable softmax，理解online算法", "duration_min": 90}
+          ],
+          "algo": [
+            {"id": "2-4-a1", "type": "leetcode", "title": "搜索旋转排序数组 (LC33)", "url": "https://leetcode.cn/problems/search-in-rotated-sorted-array/", "duration_min": 40}
+          ]
+        },
+        {
+          "day": 20,
+          "infra": [
+            {"id": "2-5-1", "type": "read", "title": "Roofline Model理解", "desc": "学会计算算术强度，判断kernel是compute-bound还是memory-bound", "duration_min": 60},
+            {"id": "2-5-2", "type": "practice", "title": "nsight/ncu profiling入门", "desc": "用NVIDIA profiler分析自己写的kernel瓶颈", "duration_min": 90}
+          ],
+          "algo": []
+        },
+        {
+          "day": 21,
+          "infra": [
+            {"id": "2-6-1", "type": "read", "title": "Triton编程模型入门", "desc": "理解Triton vs CUDA:block-level编程、auto-tuning", "duration_min": 60},
+            {"id": "2-6-2", "type": "practice", "title": "Triton Tutorial 01: Vector Add", "desc": "跑通Triton官方第一个tutorial", "duration_min": 45},
+            {"id": "2-6-3", "type": "practice", "title": "Triton Tutorial 02: Fused Softmax", "desc": "跑通fused softmax，理解为什么fusion重要", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "2-6-a1", "type": "leetcode", "title": "在排序数组中查找元素 (LC34)", "url": "https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/", "duration_min": 30}
+          ]
+        },
+        {
+          "day": 22,
+          "infra": [
+            {"id": "2-7-1", "type": "practice", "title": "Triton Tutorial 03: MatMul", "desc": "跑通矩阵乘法tutorial，理解tiling在Triton中的表达", "duration_min": 90},
+            {"id": "2-7-2", "type": "practice", "title": "Triton Tutorial 04: LayerNorm", "desc": "跑通LayerNorm tutorial", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 23,
+          "infra": [
+            {"id": "2-8-1", "type": "practice", "title": "Triton Puzzles刷题 (1-5)", "desc": "完成srush/Triton-Puzzles前5题", "duration_min": 120},
+            {"id": "2-8-2", "type": "read", "title": "LeetCUDA: 浏览kernel实现列表", "desc": "了解200+kernel的分类，选3个感兴趣的读源码", "duration_min": 30}
+          ],
+          "algo": [
+            {"id": "2-8-a1", "type": "leetcode", "title": "课程表(拓扑排序) (LC207)", "url": "https://leetcode.cn/problems/course-schedule/", "duration_min": 40}
+          ]
+        },
+        {
+          "day": 24,
+          "infra": [
+            {"id": "2-9-1", "type": "practice", "title": "Triton Puzzles刷题 (6-10)", "desc": "完成Triton-Puzzles第6-10题", "duration_min": 120},
+            {"id": "2-9-2", "type": "read", "title": "FlashAttention论文快速理解", "desc": "理解tiling + recomputation思想，不需要看证明", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 25,
+          "infra": [
+            {"id": "2-10-1", "type": "practice", "title": "Triton Puzzles刷题 (11-13)", "desc": "完成Triton-Puzzles最后3题", "duration_min": 90},
+            {"id": "2-10-2", "type": "practice", "title": "Triton Tutorial 06: Fused Attention", "desc": "跑通官方FlashAttention tutorial", "duration_min": 90}
+          ],
+          "algo": [
+            {"id": "2-10-a1", "type": "leetcode", "title": "课程表II (LC210)", "url": "https://leetcode.cn/problems/course-schedule-ii/", "duration_min": 40}
+          ]
+        },
+        {
+          "day": 26,
+          "infra": [
+            {"id": "2-11-1", "type": "practice", "title": "用Triton写Fused RMSNorm", "desc": "自己从零写一个RMSNorm kernel，benchmark vs PyTorch", "duration_min": 120},
+            {"id": "2-11-2", "type": "read", "title": "Liger-Kernel源码浏览", "desc": "看LinkedIn开源的生产级Triton kernel写法", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 27,
+          "infra": [
+            {"id": "2-12-1", "type": "summary", "title": "第二层通关总结", "desc": "整理:CUDA vs Triton对比、tiling原理、memory hierarchy图", "duration_min": 60},
+            {"id": "2-12-2", "type": "practice", "title": "自写kernel性能报告", "desc": "把自己写的RMSNorm kernel做完整benchmark报告", "duration_min": 60},
+            {"id": "2-12-3", "type": "read", "title": "FlashAttention-2论文", "desc": "理解FA2相比FA1的改进:减少non-matmul计算", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "2-12-a1", "type": "leetcode", "title": "生产者消费者模式(多线程设计)", "url": "https://leetcode.cn/problems/design-bounded-blocking-queue/", "duration_min": 40}
+          ]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "推理引擎",
+      "days": [28, 45],
+      "tasks": [
+        {
+          "day": 28,
+          "infra": [
+            {"id": "3-1-1", "type": "read", "title": "PagedAttention论文精读", "desc": "理解KV cache碎片问题 → 虚拟内存类比 → block分页方案", "duration_min": 120},
+            {"id": "3-1-2", "type": "read", "title": "OS分页机制回顾+类比", "desc": "画出OS虚拟内存 vs PagedAttention的对照图", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 29,
+          "infra": [
+            {"id": "3-2-1", "type": "read", "title": "Continuous Batching原理", "desc": "阅读Orca论文或Anyscale博客，理解iteration-level调度", "duration_min": 60},
+            {"id": "3-2-2", "type": "read", "title": "Prefill vs Decode阶段理解", "desc": "理解compute-bound vs memory-bound的本质差异", "duration_min": 45},
+            {"id": "3-2-3", "type": "practice", "title": "nano-vllm环境搭建", "desc": "clone GeeeekExplorer/nano-vllm，pip install，跑通example", "duration_min": 45}
+          ],
+          "algo": [
+            {"id": "3-2-a1", "type": "leetcode", "title": "任务调度器 (LC621)", "url": "https://leetcode.cn/problems/task-scheduler/", "duration_min": 40}
+          ]
+        },
+        {
+          "day": 30,
+          "infra": [
+            {"id": "3-3-1", "type": "read", "title": "nano-vllm: config.py + cache.py", "desc": "理解KV cache的数据结构和block定义", "duration_min": 90},
+            {"id": "3-3-2", "type": "read", "title": "nano-vllm: block.py + block_manager.py", "desc": "理解block分配/释放逻辑，对照OS buddy system", "duration_min": 90}
+          ],
+          "algo": []
+        },
+        {
+          "day": 31,
+          "infra": [
+            {"id": "3-4-1", "type": "read", "title": "nano-vllm: sequence.py + scheduler.py", "desc": "理解请求状态机(waiting→running→finished)和调度策略", "duration_min": 90},
+            {"id": "3-4-2", "type": "read", "title": "nano-vllm: engine.py", "desc": "理解step循环:schedule→execute→process_output", "duration_min": 90}
+          ],
+          "algo": [
+            {"id": "3-4-a1", "type": "leetcode", "title": "设计推特 (LC355)", "url": "https://leetcode.cn/problems/design-twitter/", "duration_min": 40}
+          ]
+        },
+        {
+          "day": 32,
+          "infra": [
+            {"id": "3-5-1", "type": "read", "title": "nano-vllm: paged_attention.py", "desc": "理解PagedAttention kernel的实现细节", "duration_min": 90},
+            {"id": "3-5-2", "type": "practice", "title": "nano-vllm: 修改调度策略实验", "desc": "尝试修改scheduler的优先级逻辑，观察吞吐变化", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 33,
+          "infra": [
+            {"id": "3-6-1", "type": "practice", "title": "mini-vllm源码阅读", "desc": "读ubermenchh/mini-vllm，对比nano-vllm的设计差异", "duration_min": 90},
+            {"id": "3-6-2", "type": "summary", "title": "nano-vllm架构图绘制", "desc": "画出完整数据流:request→scheduler→model→output", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "3-6-a1", "type": "leetcode", "title": "最小区间 (LC632)", "url": "https://leetcode.cn/problems/smallest-range-covering-elements-from-k-lists/", "duration_min": 45}
+          ]
+        },
+        {
+          "day": 34,
+          "infra": [
+            {"id": "3-7-1", "type": "read", "title": "MinivLLM: 自实现PagedAttention CUDA", "desc": "读Wenyueh/MinivLLM的CUDA kernel实现", "duration_min": 90},
+            {"id": "3-7-2", "type": "read", "title": "MinivLLM: HowToApproachvLLM.md", "desc": "跟着step-by-step指南理解vLLM实现思路", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 35,
+          "infra": [
+            {"id": "3-8-1", "type": "practice", "title": "vLLM安装+部署一个7B模型", "desc": "pip install vllm，部署Qwen2-7B并测试推理", "duration_min": 60},
+            {"id": "3-8-2", "type": "practice", "title": "vLLM benchmark: 吞吐量测试", "desc": "用benchmark_serving.py测试不同并发下的吞吐量", "duration_min": 60},
+            {"id": "3-8-3", "type": "read", "title": "vLLM V1架构概览博客", "desc": "阅读shijuzhao.github.io/vllm-v1，理解V1三段式架构", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "3-8-a1", "type": "leetcode", "title": "设计哈希映射 (LC706)", "url": "https://leetcode.cn/problems/design-hashmap/", "duration_min": 30}
+          ]
+        },
+        {
+          "day": 36,
+          "infra": [
+            {"id": "3-9-1", "type": "read", "title": "vLLM V1: processor模块", "desc": "阅读v1/engine/processor.py，理解请求预处理", "duration_min": 90},
+            {"id": "3-9-2", "type": "read", "title": "vLLM V1: engine_core模块", "desc": "阅读v1/engine/engine_core.py，理解核心step循环", "duration_min": 90}
+          ],
+          "algo": []
+        },
+        {
+          "day": 37,
+          "infra": [
+            {"id": "3-10-1", "type": "read", "title": "vLLM V1: scheduler源码", "desc": "精读scheduler.py，理解waiting/running/swapped队列调度", "duration_min": 120},
+            {"id": "3-10-2", "type": "read", "title": "vLLM V1: block_manager源码", "desc": "精读block_manager.py，理解物理/逻辑block映射", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "3-10-a1", "type": "leetcode", "title": "设计循环队列 (LC622)", "url": "https://leetcode.cn/problems/design-circular-queue/", "duration_min": 30}
+          ]
+        },
+        {
+          "day": 38,
+          "infra": [
+            {"id": "3-11-1", "type": "read", "title": "vLLM V1: output_processor模块", "desc": "理解token解码和结果组装", "duration_min": 60},
+            {"id": "3-11-2", "type": "read", "title": "vLLM: model_runner源码", "desc": "理解模型执行流程、CUDA Graph应用", "duration_min": 90}
+          ],
+          "algo": []
+        },
+        {
+          "day": 39,
+          "infra": [
+            {"id": "3-12-1", "type": "read", "title": "vLLM Prefix Caching理解", "desc": "理解prefix block复用和RadixAttention对比", "duration_min": 60},
+            {"id": "3-12-2", "type": "read", "title": "SGLang论文快速阅读", "desc": "理解RadixAttention思路，和vLLM prefix caching对比", "duration_min": 60},
+            {"id": "3-12-3", "type": "read", "title": "vLLM中文文档浏览", "desc": "通过vllm-cn快速查阅配置参数含义", "duration_min": 30}
+          ],
+          "algo": [
+            {"id": "3-12-a1", "type": "leetcode", "title": "分割等和子集(DP) (LC416)", "url": "https://leetcode.cn/problems/partition-equal-subset-sum/", "duration_min": 40}
+          ]
+        },
+        {
+          "day": 40,
+          "infra": [
+            {"id": "3-13-1", "type": "read", "title": "FlashAttention-2源码入口阅读", "desc": "理解FA2的Python接口和CUDA kernel入口", "duration_min": 90},
+            {"id": "3-13-2", "type": "read", "title": "FlashAttention tiling图解", "desc": "画出Q/K/V的tiling分块示意图和内存访问模式", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 41,
+          "infra": [
+            {"id": "3-14-1", "type": "read", "title": "FlashAttention forward pass理解", "desc": "理解online softmax + tiled matmul的融合", "duration_min": 90},
+            {"id": "3-14-2", "type": "read", "title": "FlashAttention backward pass理解", "desc": "理解recomputation如何节省显存", "duration_min": 90}
+          ],
+          "algo": [
+            {"id": "3-14-a1", "type": "leetcode", "title": "零钱兑换(DP) (LC322)", "url": "https://leetcode.cn/problems/coin-change/", "duration_min": 40}
+          ]
+        },
+        {
+          "day": 42,
+          "infra": [
+            {"id": "3-15-1", "type": "practice", "title": "FlashAttention benchmark实验", "desc": "对比FA2 vs standard attention的速度和显存", "duration_min": 60},
+            {"id": "3-15-2", "type": "read", "title": "Speculative Decoding原理", "desc": "理解draft-verify范式，小模型猜+大模型验", "duration_min": 60},
+            {"id": "3-15-3", "type": "read", "title": "Chunked Prefill理解", "desc": "理解为什么要把长prompt切chunk处理", "duration_min": 45}
+          ],
+          "algo": []
+        },
+        {
+          "day": 43,
+          "infra": [
+            {"id": "3-16-1", "type": "practice", "title": "vLLM高级功能实验", "desc": "测试TP多卡推理、量化(AWQ/GPTQ)模式", "duration_min": 90},
+            {"id": "3-16-2", "type": "read", "title": "量化基础: INT8/INT4/FP8", "desc": "理解对称/非对称量化、per-channel/per-token粒度", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "3-16-a1", "type": "leetcode", "title": "最长递增子序列(DP) (LC300)", "url": "https://leetcode.cn/problems/longest-increasing-subsequence/", "duration_min": 40}
+          ]
+        },
+        {
+          "day": 44,
+          "infra": [
+            {"id": "3-17-1", "type": "read", "title": "AWQ量化论文", "desc": "理解activation-aware的salient weight保护思路", "duration_min": 90},
+            {"id": "3-17-2", "type": "practice", "title": "vLLM AWQ量化模型部署", "desc": "下载AWQ量化模型并部署，对比FP16性能", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 45,
+          "infra": [
+            {"id": "3-18-1", "type": "summary", "title": "第三层通关总结", "desc": "画出vLLM完整架构图+写一份推理优化技术综述", "duration_min": 90},
+            {"id": "3-18-2", "type": "practice", "title": "推理引擎benchmark报告", "desc": "不同batch/序列长度/量化下的性能对比报告", "duration_min": 90}
+          ],
+          "algo": [
+            {"id": "3-18-a1", "type": "leetcode", "title": "单词拆分(DP) (LC139)", "url": "https://leetcode.cn/problems/word-break/", "duration_min": 40}
+          ]
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "自制推理框架",
+      "days": [46, 58],
+      "tasks": [
+        {
+          "day": 46,
+          "infra": [
+            {"id": "4-1-1", "type": "read", "title": "llama2.c 源码通读", "desc": "karpathy的700行C推理代码，理解最简LLM推理流程", "duration_min": 90},
+            {"id": "4-1-2", "type": "practice", "title": "编译运行llama2.c", "desc": "编译并运行，对比Python推理速度", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 47,
+          "infra": [
+            {"id": "4-2-1", "type": "read", "title": "llm.c: GPT-2训练源码", "desc": "karpathy的纯C/CUDA GPT-2训练，理解底层实现", "duration_min": 120},
+            {"id": "4-2-2", "type": "practice", "title": "llm.c编译运行", "desc": "编译CUDA版本，在GPU上跑通训练", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "4-2-a1", "type": "leetcode", "title": "编辑距离(DP) (LC72)", "url": "https://leetcode.cn/problems/edit-distance/", "duration_min": 45}
+          ]
+        },
+        {
+          "day": 48,
+          "infra": [
+            {"id": "4-3-1", "type": "read", "title": "KuiperLLama项目结构理解", "desc": "阅读README和目录结构，理解C++推理框架分层", "duration_min": 60},
+            {"id": "4-3-2", "type": "practice", "title": "KuiperLLama环境搭建", "desc": "cmake编译，跑通基本推理", "duration_min": 90}
+          ],
+          "algo": []
+        },
+        {
+          "day": 49,
+          "infra": [
+            {"id": "4-4-1", "type": "read", "title": "KuiperLLama: Tensor和Buffer管理", "desc": "理解C++中的Tensor抽象和内存管理", "duration_min": 90},
+            {"id": "4-4-2", "type": "read", "title": "KuiperLLama: 算子实现层", "desc": "理解MatMul/RMSNorm/RoPE的C++实现", "duration_min": 90}
+          ],
+          "algo": [
+            {"id": "4-4-a1", "type": "leetcode", "title": "矩阵中的最长递增路径 (LC329)", "url": "https://leetcode.cn/problems/longest-increasing-path-in-a-matrix/", "duration_min": 45}
+          ]
+        },
+        {
+          "day": 50,
+          "infra": [
+            {"id": "4-5-1", "type": "read", "title": "KuiperLLama: 模型加载和权重映射", "desc": "理解模型文件解析、权重到算子的绑定", "duration_min": 90},
+            {"id": "4-5-2", "type": "read", "title": "KuiperLLama: KV Cache实现", "desc": "理解C++版本的KV cache管理", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 51,
+          "infra": [
+            {"id": "4-6-1", "type": "read", "title": "KuiperLLama: 推理主循环", "desc": "理解prefill→decode循环、token采样", "duration_min": 90},
+            {"id": "4-6-2", "type": "practice", "title": "KuiperLLama: 添加新模型支持", "desc": "尝试适配一个新模型(如小规模Qwen)", "duration_min": 90}
+          ],
+          "algo": [
+            {"id": "4-6-a1", "type": "leetcode", "title": "有效的数独 (LC36)", "url": "https://leetcode.cn/problems/valid-sudoku/", "duration_min": 30}
+          ]
+        },
+        {
+          "day": 52,
+          "infra": [
+            {"id": "4-7-1", "type": "read", "title": "llama.cpp: GGUF格式理解", "desc": "理解GGUF文件结构和量化格式(Q4_K_M等)", "duration_min": 90},
+            {"id": "4-7-2", "type": "practice", "title": "llama.cpp: 量化+推理实验", "desc": "把一个HF模型转GGUF并跑推理", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 53,
+          "infra": [
+            {"id": "4-8-1", "type": "read", "title": "TensorRT-LLM入门", "desc": "了解graph optimization、layer fusion概念", "duration_min": 90},
+            {"id": "4-8-2", "type": "practice", "title": "TensorRT-LLM编译部署实验", "desc": "用TRT-LLM部署一个模型，对比vLLM性能", "duration_min": 90}
+          ],
+          "algo": [
+            {"id": "4-8-a1", "type": "leetcode", "title": "岛屿数量(BFS/DFS) (LC200)", "url": "https://leetcode.cn/problems/number-of-islands/", "duration_min": 30}
+          ]
+        },
+        {
+          "day": 54,
+          "infra": [
+            {"id": "4-9-1", "type": "practice", "title": "推理框架横评", "desc": "同一模型在vLLM/TRT-LLM/llama.cpp下的性能对比", "duration_min": 120},
+            {"id": "4-9-2", "type": "summary", "title": "推理框架对比报告", "desc": "写出各框架的优劣势、适用场景", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 55,
+          "infra": [
+            {"id": "4-10-1", "type": "read", "title": "Speculative Decoding深入", "desc": "读Medusa/Eagle等变体论文，理解不同speculation策略", "duration_min": 90},
+            {"id": "4-10-2", "type": "practice", "title": "vLLM Speculative Decoding实验", "desc": "配置spec_decoding参数测试效果", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "4-10-a1", "type": "leetcode", "title": "克隆图 (LC133)", "url": "https://leetcode.cn/problems/clone-graph/", "duration_min": 30}
+          ]
+        },
+        {
+          "day": 56,
+          "infra": [
+            {"id": "4-11-1", "type": "read", "title": "MLC-LLM: 编译优化方案", "desc": "理解TVM编译栈如何做跨硬件推理优化", "duration_min": 90},
+            {"id": "4-11-2", "type": "practice", "title": "MLC-LLM部署实验", "desc": "用MLC-LLM部署一个小模型", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 57,
+          "infra": [
+            {"id": "4-12-1", "type": "read", "title": "FlashAttention-3(Hopper)了解", "desc": "理解H100异步执行+FP8优化", "duration_min": 60},
+            {"id": "4-12-2", "type": "read", "title": "FlashInfer库浏览", "desc": "了解另一个高性能attention kernel库", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "4-12-a1", "type": "leetcode", "title": "接雨水 (LC42)", "url": "https://leetcode.cn/problems/trapping-rain-water/", "duration_min": 40}
+          ]
+        },
+        {
+          "day": 58,
+          "infra": [
+            {"id": "4-13-1", "type": "summary", "title": "第四层通关总结", "desc": "整理推理框架全景图:模型加载→算子计算→KV管理→调度→输出", "duration_min": 60},
+            {"id": "4-13-2", "type": "summary", "title": "简历项目整理", "desc": "把KuiperLLama/自写kernel经验整理为简历项目描述", "duration_min": 60}
+          ],
+          "algo": []
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "RL训练基建",
+      "days": [59, 72],
+      "tasks": [
+        {
+          "day": 59,
+          "infra": [
+            {"id": "5-1-1", "type": "read", "title": "RLHF全流程回顾", "desc": "回顾InstructGPT:SFT→RM→PPO，画出数据流图", "duration_min": 60},
+            {"id": "5-1-2", "type": "practice", "title": "trl库: SFT Trainer实验", "desc": "用HuggingFace trl跑通最简SFT", "duration_min": 90}
+          ],
+          "algo": [
+            {"id": "5-1-a1", "type": "leetcode", "title": "打家劫舍(DP) (LC198)", "url": "https://leetcode.cn/problems/house-robber/", "duration_min": 30}
+          ]
+        },
+        {
+          "day": 60,
+          "infra": [
+            {"id": "5-2-1", "type": "practice", "title": "trl库: DPO Trainer实验", "desc": "用trl跑通DPO训练", "duration_min": 90},
+            {"id": "5-2-2", "type": "practice", "title": "trl库: PPO Trainer实验", "desc": "用trl跑通PPO训练，观察reward曲线", "duration_min": 90}
+          ],
+          "algo": []
+        },
+        {
+          "day": 61,
+          "infra": [
+            {"id": "5-3-1", "type": "read", "title": "veRL架构文档精读", "desc": "阅读veRL readthedocs的Architecture Overview", "duration_min": 90},
+            {"id": "5-3-2", "type": "practice", "title": "veRL环境搭建", "desc": "安装veRL及依赖(Ray, vLLM等)", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "5-3-a1", "type": "leetcode", "title": "打家劫舍II (LC213)", "url": "https://leetcode.cn/problems/house-robber-ii/", "duration_min": 30}
+          ]
+        },
+        {
+          "day": 62,
+          "infra": [
+            {"id": "5-4-1", "type": "practice", "title": "veRL: GSM8K PPO训练", "desc": "跑通veRL官方GSM8K example", "duration_min": 120},
+            {"id": "5-4-2", "type": "read", "title": "veRL: Actor-Critic分离架构理解", "desc": "理解Actor和Critic如何分布在不同GPU上", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 63,
+          "infra": [
+            {"id": "5-5-1", "type": "read", "title": "veRL: Ray worker调度源码", "desc": "理解veRL如何用Ray做分布式编排", "duration_min": 120},
+            {"id": "5-5-2", "type": "read", "title": "veRL: Rollout模块", "desc": "理解experience收集和vLLM推理的集成", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "5-5-a1", "type": "leetcode", "title": "最大正方形(DP) (LC221)", "url": "https://leetcode.cn/problems/maximal-square/", "duration_min": 40}
+          ]
+        },
+        {
+          "day": 64,
+          "infra": [
+            {"id": "5-6-1", "type": "read", "title": "veRL: Trainer和算法实现", "desc": "精读PPO/GRPO算法的具体实现代码", "duration_min": 90},
+            {"id": "5-6-2", "type": "read", "title": "veRL: 数据传输和显存管理", "desc": "理解Actor/Critic/RM之间的tensor传输优化", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 65,
+          "infra": [
+            {"id": "5-7-1", "type": "practice", "title": "veRL: GRPO训练实验", "desc": "尝试GRPO模式训练，对比PPO稳定性", "duration_min": 120},
+            {"id": "5-7-2", "type": "read", "title": "DeepSeek-R1 GRPO实现回顾", "desc": "对照论文，在veRL代码中找到对应实现", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "5-7-a1", "type": "leetcode", "title": "不同路径(DP) (LC62)", "url": "https://leetcode.cn/problems/unique-paths/", "duration_min": 25}
+          ]
+        },
+        {
+          "day": 66,
+          "infra": [
+            {"id": "5-8-1", "type": "read", "title": "OpenRLHF项目结构", "desc": "阅读README和架构文档，理解设计思路", "duration_min": 60},
+            {"id": "5-8-2", "type": "practice", "title": "OpenRLHF: 跑通PPO example", "desc": "安装并跑通OpenRLHF的PPO训练", "duration_min": 90}
+          ],
+          "algo": []
+        },
+        {
+          "day": 67,
+          "infra": [
+            {"id": "5-9-1", "type": "read", "title": "OpenRLHF vs veRL架构对比", "desc": "对比两者的worker编排、数据传输、显存策略", "duration_min": 90},
+            {"id": "5-9-2", "type": "read", "title": "分布式RL训练通信模式", "desc": "理解AllReduce/P2P/Ring在RL训练中的应用", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "5-9-a1", "type": "leetcode", "title": "最小路径和(DP) (LC64)", "url": "https://leetcode.cn/problems/minimum-path-sum/", "duration_min": 30}
+          ]
+        },
+        {
+          "day": 68,
+          "infra": [
+            {"id": "5-10-1", "type": "read", "title": "Reward Model训练理解", "desc": "理解RM的数据格式(chosen/rejected)和训练流程", "duration_min": 60},
+            {"id": "5-10-2", "type": "practice", "title": "Reward Model训练实验", "desc": "用trl或veRL训练一个小规模RM", "duration_min": 90}
+          ],
+          "algo": []
+        },
+        {
+          "day": 69,
+          "infra": [
+            {"id": "5-11-1", "type": "read", "title": "Scaling RLHF: 多节点训练", "desc": "理解跨节点RL训练的挑战和解决方案", "duration_min": 90},
+            {"id": "5-11-2", "type": "read", "title": "Datawhale unlock-deepseek: Infra章节", "desc": "理解DeepSeek训练基础设施的技术拆解", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "5-11-a1", "type": "leetcode", "title": "买卖股票最佳时机(DP) (LC121)", "url": "https://leetcode.cn/problems/best-time-to-buy-and-sell-stock/", "duration_min": 20}
+          ]
+        },
+        {
+          "day": 70,
+          "infra": [
+            {"id": "5-12-1", "type": "read", "title": "DeepSpeed在RL训练中的应用", "desc": "理解ZeRO Stage 1/2/3在RL场景的选择", "duration_min": 90},
+            {"id": "5-12-2", "type": "practice", "title": "DeepSpeed+veRL联合实验", "desc": "尝试开启DeepSpeed ZeRO加速veRL训练", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 71,
+          "infra": [
+            {"id": "5-13-1", "type": "summary", "title": "RL训练框架对比报告", "desc": "写veRL vs OpenRLHF vs trl的优劣对比", "duration_min": 60},
+            {"id": "5-13-2", "type": "summary", "title": "RL训练pipeline总结", "desc": "画出完整RL训练流水线:数据→Rollout→RM→Advantage→Update", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "5-13-a1", "type": "leetcode", "title": "会议室II (LC253)", "url": "https://leetcode.cn/problems/meeting-rooms-ii/", "duration_min": 40}
+          ]
+        },
+        {
+          "day": 72,
+          "infra": [
+            {"id": "5-14-1", "type": "summary", "title": "第五层通关总结", "desc": "整理:PPO/DPO/GRPO选型指南 + 分布式RL架构图", "duration_min": 90},
+            {"id": "5-14-2", "type": "practice", "title": "veRL自定义reward实验", "desc": "尝试修改reward函数，观察训练行为变化", "duration_min": 90}
+          ],
+          "algo": []
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "国产GPU适配",
+      "days": [73, 84],
+      "tasks": [
+        {
+          "day": 73,
+          "infra": [
+            {"id": "6-1-1", "type": "read", "title": "国产GPU生态全景", "desc": "了解昇腾/海光/寒武纪/摩尔线程的硬件特点和编程模型", "duration_min": 90},
+            {"id": "6-1-2", "type": "read", "title": "CUDA vs HIP vs CANN对比", "desc": "理解三种编程模型的异同和迁移难度", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 74,
+          "infra": [
+            {"id": "6-2-1", "type": "read", "title": "华为昇腾CANN开发入门", "desc": "阅读AscendCL快速入门文档", "duration_min": 90},
+            {"id": "6-2-2", "type": "read", "title": "昇腾910B硬件架构", "desc": "理解达芬奇架构、Cube Unit、Vector Unit", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "6-2-a1", "type": "leetcode", "title": "旋转图像 (LC48)", "url": "https://leetcode.cn/problems/rotate-image/", "duration_min": 25}
+          ]
+        },
+        {
+          "day": 75,
+          "infra": [
+            {"id": "6-3-1", "type": "practice", "title": "昇腾环境搭建(或使用云服务)", "desc": "配置CANN开发环境，跑通Hello World", "duration_min": 120},
+            {"id": "6-3-2", "type": "practice", "title": "昇腾: 简单算子开发", "desc": "用AscendCL写一个向量加法算子", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 76,
+          "infra": [
+            {"id": "6-4-1", "type": "read", "title": "海光DCU/ROCm生态", "desc": "理解HIP编程模型和CUDA代码迁移工具hipify", "duration_min": 60},
+            {"id": "6-4-2", "type": "practice", "title": "CUDA→HIP代码迁移实验", "desc": "用hipify转换一个简单CUDA kernel并编译运行", "duration_min": 90}
+          ],
+          "algo": [
+            {"id": "6-4-a1", "type": "leetcode", "title": "螺旋矩阵 (LC54)", "url": "https://leetcode.cn/problems/spiral-matrix/", "duration_min": 30}
+          ]
+        },
+        {
+          "day": 77,
+          "infra": [
+            {"id": "6-5-1", "type": "read", "title": "MindSpore框架入门", "desc": "理解Graph模式和PyNative模式的区别", "duration_min": 60},
+            {"id": "6-5-2", "type": "practice", "title": "MindSpore: 简单模型训练", "desc": "用MindSpore训练一个小模型在昇腾上运行", "duration_min": 90}
+          ],
+          "algo": []
+        },
+        {
+          "day": 78,
+          "infra": [
+            {"id": "6-6-1", "type": "read", "title": "vLLM多硬件后端支持分析", "desc": "阅读vLLM的Ascend/Gaudi plugin代码", "duration_min": 90},
+            {"id": "6-6-2", "type": "read", "title": "PyTorch XLA/国产GPU后端", "desc": "理解PyTorch如何通过backend plugin支持不同硬件", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "6-6-a1", "type": "leetcode", "title": "最大子数组和 (LC53)", "url": "https://leetcode.cn/problems/maximum-subarray/", "duration_min": 20}
+          ]
+        },
+        {
+          "day": 79,
+          "infra": [
+            {"id": "6-7-1", "type": "practice", "title": "国产GPU上部署LLM推理", "desc": "在昇腾或海光上部署一个7B模型推理", "duration_min": 120},
+            {"id": "6-7-2", "type": "practice", "title": "性能对比测试", "desc": "对比同模型在NVIDIA vs 国产GPU上的推理性能", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 80,
+          "infra": [
+            {"id": "6-8-1", "type": "read", "title": "算子适配常见问题", "desc": "整理CUDA→国产GPU迁移中的常见坑和解决方案", "duration_min": 90},
+            {"id": "6-8-2", "type": "practice", "title": "自写kernel国产GPU适配", "desc": "把之前写的Triton/CUDA kernel尝试迁移到国产硬件", "duration_min": 90}
+          ],
+          "algo": [
+            {"id": "6-8-a1", "type": "leetcode", "title": "除自身以外数组的乘积 (LC238)", "url": "https://leetcode.cn/problems/product-of-array-except-self/", "duration_min": 25}
+          ]
+        },
+        {
+          "day": 81,
+          "infra": [
+            {"id": "6-9-1", "type": "read", "title": "MLC-LLM跨硬件适配层", "desc": "分析MLC-LLM如何抽象不同GPU后端", "duration_min": 90},
+            {"id": "6-9-2", "type": "read", "title": "寒武纪BANG编程了解", "desc": "了解寒武纪MLU的编程模型特点", "duration_min": 60}
+          ],
+          "algo": []
+        },
+        {
+          "day": 82,
+          "infra": [
+            {"id": "6-10-1", "type": "practice", "title": "self-llm: 国产GPU部署教程", "desc": "参考Datawhale self-llm的国产硬件部署指南实操", "duration_min": 120},
+            {"id": "6-10-2", "type": "summary", "title": "国产GPU适配经验文档", "desc": "整理踩坑记录和最佳实践", "duration_min": 60}
+          ],
+          "algo": [
+            {"id": "6-10-a1", "type": "leetcode", "title": "搜索二维矩阵 (LC74)", "url": "https://leetcode.cn/problems/search-a-2d-matrix/", "duration_min": 25}
+          ]
+        },
+        {
+          "day": 83,
+          "infra": [
+            {"id": "6-11-1", "type": "summary", "title": "国产GPU技术选型报告", "desc": "写一份昇腾/海光/寒武纪的技术对比和选型建议", "duration_min": 90},
+            {"id": "6-11-2", "type": "practice", "title": "完整项目Demo", "desc": "搭建一个国产GPU上的LLM推理服务完整Demo", "duration_min": 90}
+          ],
+          "algo": []
+        },
+        {
+          "day": 84,
+          "infra": [
+            {"id": "6-12-1", "type": "summary", "title": "全路线通关总结", "desc": "回顾84天学习成果，整理知识体系图谱", "duration_min": 60},
+            {"id": "6-12-2", "type": "summary", "title": "简历和项目经验梳理", "desc": "整理所有项目经验为简历内容", "duration_min": 60},
+            {"id": "6-12-3", "type": "summary", "title": "后续学习规划", "desc": "列出仍需深入的方向和持续学习计划", "duration_min": 30}
+          ],
+          "algo": [
+            {"id": "6-12-a1", "type": "leetcode", "title": "复习:重做3道之前不熟的题", "url": "", "duration_min": 45}
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,361 @@
+{
+  "phase_id": 6,
+  "enrichments": {
+    "6-1-1": {
+      "key_points": [
+        "国产GPU生态: 华为昇腾(Ascend)、海光(Hygon/DCU)、寒武纪(Cambricon)、摩尔线程(Moore Threads)",
+        "市场现状: NVIDIA限制对华出口(A100/H100)，国产GPU成为AI Infra必选项",
+        "差距: 国产GPU在软件生态(编译器/框架)上与CUDA差距大于硬件差距",
+        "机会: 国产GPU适配人才稀缺，有CUDA经验+适配经验很有竞争力"
+      ],
+      "resources": [
+        {"name": "国产GPU生态报告", "url": "https://github.com/datawhalechina/so-large-lm"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-1-01", "front": "国产GPU的主要厂商和特点？", "back": "华为昇腾: CANN生态，910B/910C\n  最成熟，MindSpore框架\n海光DCU: 兼容AMD ROCm/HIP\n  CUDA代码迁移最容易\n寒武纪: MLU370，BANG语言\n  推理芯片为主\n摩尔线程: MTT S80，兼容CUDA\n  消费级+数据中心\n天数智芯: 训练芯片\n共同挑战: 软件生态不成熟", "topic": "国产GPU", "day": "Day 73", "source": "国产GPU生态"}
+      ]
+    },
+    "6-1-2": {
+      "key_points": [
+        "CUDA: NVIDIA专有，生态最成熟(cuBLAS/cuDNN/TensorRT/Thrust等)",
+        "HIP: AMD ROCm的编程接口，API与CUDA高度相似，海光DCU兼容",
+        "CANN: 华为昇腾的计算架构，AscendCL编程接口，与CUDA差异大",
+        "迁移难度: CUDA→HIP(自动hipify,较容易) vs CUDA→CANN(需要重写,较难)"
+      ],
+      "resources": [
+        {"name": "CANN文档", "url": "https://www.hiascend.com/document"},
+        {"name": "ROCm文档", "url": "https://rocm.docs.amd.com/"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-1-02", "front": "CUDA、HIP、CANN的关系和迁移难度？", "back": "CUDA(NVIDIA): 原生生态，最成熟\nHIP(AMD/海光):\n  API与CUDA 1:1对应\n  hipify工具自动转换\n  迁移工作量: ~1周(小项目)\nCANN(华为昇腾):\n  不同的编程模型(AscendCL)\n  需要重写kernel\n  迁移工作量: ~1-3月\n策略: 先HIP(快)→再CANN(深)", "topic": "GPU编程接口", "day": "Day 73", "source": "综合"}
+      ]
+    },
+    "6-2-1": {
+      "key_points": [
+        "CANN(Compute Architecture for Neural Networks): 华为AI计算架构",
+        "层次: 应用层(MindSpore/PyTorch) → AscendCL(编程接口) → GE(图引擎) → TBE(算子)",
+        "安装: 需要昇腾驱动+固件+CANN Toolkit，版本需严格匹配",
+        "开发: AscendCL提供C++接口，类似CUDA的设备管理/内存分配/kernel调用"
+      ],
+      "resources": [
+        {"name": "CANN开发者文档", "url": "https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/"},
+        {"name": "昇腾开源社区", "url": "https://gitee.com/ascend"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-2-01", "front": "CANN的软件栈层次？", "back": "应用层: MindSpore/PyTorch\n  ↓ 框架适配\nAscendCL: 编程接口(类似CUDA Runtime)\n  设备管理/内存/流/事件\n  ↓\nGE(Graph Engine): 图编译优化\n  算子融合/内存优化\n  ↓\nTBE(Tensor Boost Engine): 算子开发\n  自定义算子用TBE编写\n  类似CUDA kernel\n  ↓\n昇腾NPU硬件(达芬奇架构)", "topic": "CANN", "day": "Day 74", "source": "CANN文档"}
+      ]
+    },
+    "6-2-2": {
+      "key_points": [
+        "昇腾910B: 华为AI训练芯片，对标A100。算力约256TFLOPS FP16",
+        "达芬奇架构: AI Core(向量/矩阵单元)，Cube Unit(矩阵乘专用)",
+        "内存: 32/64GB HBM2e，带宽约1.2TB/s",
+        "集群: 昇腾910B组成的Atlas 800训练集群，支持多机多卡训练"
+      ],
+      "resources": [
+        {"name": "昇腾910B规格", "url": "https://www.hiascend.com/hardware/product"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-2-02", "front": "昇腾910B vs A100的关键参数？", "back": "昇腾910B:\n  FP16: ~256 TFLOPS\n  HBM: 32/64GB, ~1.2TB/s\n  达芬奇架构(Cube+Vector)\nA100:\n  FP16: 312 TFLOPS\n  HBM2e: 80GB, 2TB/s\n  Ampere架构(Tensor Core)\n差距: 硬件~80%性能\n  软件生态差距更大\n  CANN vs CUDA成熟度", "topic": "昇腾", "day": "Day 74", "source": "昇腾规格"}
+      ]
+    },
+    "6-3-1": {
+      "key_points": [
+        "昇腾基础编程: AscendCL初始化→设备管理→内存分配→数据传输→算子执行",
+        "API对应: aclInit↔cudaInit, aclrtMalloc↔cudaMalloc, aclrtMemcpy↔cudaMemcpy",
+        "流管理: aclrtCreateStream↔cudaStreamCreate, 异步执行和同步",
+        "示例: 矩阵乘法使用AscendCL调用内置GEMM算子"
+      ],
+      "resources": [
+        {"name": "AscendCL编程指南", "url": "https://www.hiascend.com/document"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-3-01", "front": "AscendCL和CUDA API的对应关系？", "back": "初始化: aclInit() ↔ cudaInit()\n设备: aclrtSetDevice() ↔ cudaSetDevice()\n内存: aclrtMalloc() ↔ cudaMalloc()\n拷贝: aclrtMemcpy() ↔ cudaMemcpy()\n流: aclrtCreateStream() ↔ cudaStreamCreate()\n算子: aclnnXxx() ↔ cudaLaunchKernel()\n同步: aclrtSynchronizeStream()\n差异: CANN没有直接写kernel的接口\n  需要通过TBE/AICPU算子框架", "topic": "AscendCL", "day": "Day 75", "source": "AscendCL编程指南"}
+      ]
+    },
+    "6-3-2": {
+      "key_points": [
+        "昇腾算子开发: 使用TBE(Tensor Boost Engine)或Ascend C编写自定义算子",
+        "Ascend C: 类C++的算子开发语言(较新)，更接近CUDA编程体验",
+        "TBE: 基于TVM的算子描述，自动生成NPU代码",
+        "算子注册: 开发后需要在框架(PyTorch/MindSpore)中注册才能使用"
+      ],
+      "resources": [
+        {"name": "Ascend C算子开发", "url": "https://www.hiascend.com/document"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-3-02", "front": "昇腾自定义算子的开发方式？", "back": "方式1: TBE(Tensor Boost Engine)\n  基于TVM的DSL描述\n  自动生成NPU代码\n  适合标准算子\n方式2: Ascend C(推荐)\n  类C++语法\n  更灵活，更接近CUDA体验\n  可以精细控制AI Core\n流程: 开发→编译→注册→框架调用\n对比: 类似CUDA写kernel\n  但NPU架构不同，需要适配", "topic": "昇腾算子", "day": "Day 75", "source": "Ascend C文档"}
+      ]
+    },
+    "6-4-1": {
+      "key_points": [
+        "海光DCU: 基于AMD CDNA架构，兼容ROCm/HIP生态",
+        "优势: CUDA代码可通过hipify工具自动转换为HIP代码",
+        "ROCm: AMD的开源GPU计算平台，包含编译器、运行时、数学库",
+        "型号: DCU Z100L(训练)、DCU K100(推理)，定位类似A100/A30"
+      ],
+      "resources": [
+        {"name": "ROCm文档", "url": "https://rocm.docs.amd.com/"},
+        {"name": "海光信息", "url": "https://www.hygon.cn/"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-4-01", "front": "海光DCU的适配策略？", "back": "海光DCU兼容AMD ROCm\n迁移路径: CUDA → HIP\n工具: hipify-perl/hipify-clang\n  自动转换90%+ CUDA代码\n手动修改:\n  NVIDIA特有API(cuDNN等)\n  内联PTX汇编\n  Tensor Core相关代码\n库替换: cuBLAS→rocBLAS\n  cuDNN→MIOpen\n  cuFFT→rocFFT\n工作量: 通常1-2周搞定", "topic": "海光DCU", "day": "Day 76", "source": "ROCm文档"}
+      ]
+    },
+    "6-4-2": {
+      "key_points": [
+        "hipify转换: hipify-perl或hipify-clang将CUDA代码自动转为HIP",
+        "API映射: cudaMalloc→hipMalloc, cudaMemcpy→hipMemcpy, <<<>>>→hipLaunchKernelGGL",
+        "手动调整: 部分CUDA特有功能需手动适配(如cooperative groups)",
+        "验证: 转换后编译运行+正确性验证(与CUDA版本对比输出)"
+      ],
+      "resources": [
+        {"name": "hipify工具", "url": "https://rocm.docs.amd.com/projects/HIPIFY/en/latest/"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-4-02", "front": "CUDA到HIP的自动转换流程？", "back": "1. hipify-perl/clang转换源码\n  cudaMalloc → hipMalloc\n  cudaMemcpy → hipMemcpy\n  __global__ → __global__ (不变)\n  <<<grid,block>>> → hipLaunchKernelGGL\n2. 手动修改不支持的API\n  cooperative_groups等\n3. 替换库: cuBLAS→rocBLAS\n4. 编译: hipcc代替nvcc\n5. 验证: 对比CUDA输出\n覆盖率: 自动转换90%+", "topic": "HIP迁移", "day": "Day 76", "source": "hipify文档"}
+      ]
+    },
+    "6-5-1": {
+      "key_points": [
+        "MindSpore: 华为开源AI框架，原生支持昇腾NPU",
+        "特点: 全场景(端边云)、自动并行、图模式+Pynative模式",
+        "API: 类似PyTorch的nn.Module/Tensor接口，迁移成本较低",
+        "生态: MindSpore Hub(预训练模型)、MindFormers(大模型套件)"
+      ],
+      "resources": [
+        {"name": "MindSpore官网", "url": "https://www.mindspore.cn/"},
+        {"name": "MindSpore GitHub", "url": "https://github.com/mindspore-ai/mindspore"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-5-01", "front": "MindSpore和PyTorch的主要区别？", "back": "MindSpore:\n  原生昇腾支持(一等公民)\n  图模式(编译优化,快)+ Pynative(动态,调试)\n  自动并行(配置策略即可)\n  数据处理: MindDataset\nPyTorch:\n  原生CUDA支持\n  动态图(灵活)\n  手动并行(DDP/FSDP)\n  数据: DataLoader\n迁移: API类似，概念对应\n  约1-2周适应", "topic": "MindSpore", "day": "Day 77", "source": "MindSpore文档"}
+      ]
+    },
+    "6-5-2": {
+      "key_points": [
+        "MindFormers: 华为大模型训练套件，支持LLaMA/Qwen等模型在昇腾上训练",
+        "使用: 配置文件指定模型/数据/并行策略，一键启动训练",
+        "并行策略: 数据并行+模型并行+流水线并行，配置文件指定",
+        "适配: 很多主流模型已经适配好，直接用配置文件启动"
+      ],
+      "resources": [
+        {"name": "MindFormers", "url": "https://gitee.com/mindspore/mindformers"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-5-02", "front": "如何在昇腾上训练大模型？", "back": "方式1: MindFormers(推荐)\n  已适配LLaMA/Qwen/ChatGLM等\n  配置文件指定并行策略\n  一键启动: run_mindformer.py\n方式2: PyTorch + torch_npu\n  华为提供torch_npu插件\n  PyTorch代码最小修改\n  .to('npu:0')代替.to('cuda:0')\n方式3: MindSpore原生开发\n  性能最优但迁移成本最大", "topic": "昇腾训练", "day": "Day 77", "source": "MindFormers"}
+      ]
+    },
+    "6-6-1": {
+      "key_points": [
+        "vLLM多硬件: vLLM通过抽象层支持不同GPU后端(CUDA/ROCm/XLA)",
+        "实现: Platform抽象类，每个硬件实现自己的attention kernel和内存管理",
+        "ROCm支持: vLLM已支持AMD GPU(ROCm)，需要编译ROCm版本",
+        "昇腾支持: 通过torch_npu和自定义attention kernel(社区贡献)"
+      ],
+      "resources": [
+        {"name": "vLLM多硬件支持", "url": "https://docs.vllm.ai/en/latest/getting_started/installation.html"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-6-01", "front": "vLLM如何支持多种GPU？", "back": "抽象层: Platform接口\n  get_device_name()\n  attention_backend()\n  memory_allocator()\n实现:\n  CUDA: FlashAttention/FlashInfer\n  ROCm: CK(Composable Kernel)\n  昇腾: torch_npu + 自定义kernel\n安装:\n  CUDA: pip install vllm\n  ROCm: pip install vllm-rocm\n  昇腾: 从源码编译+torch_npu", "topic": "多硬件支持", "day": "Day 78", "source": "vLLM文档"}
+      ]
+    },
+    "6-6-2": {
+      "key_points": [
+        "PyTorch XLA: Google的PyTorch后端，支持TPU和其他加速器",
+        "torch_npu: 华为的PyTorch昇腾插件，让PyTorch代码跑在昇腾上",
+        "使用: import torch_npu; device = torch.device('npu:0')",
+        "限制: 不是所有PyTorch算子都已适配，缺失的需要用AscendCL自定义"
+      ],
+      "resources": [
+        {"name": "torch_npu", "url": "https://gitee.com/ascend/pytorch"},
+        {"name": "PyTorch XLA", "url": "https://github.com/pytorch/xla"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-6-02", "front": "torch_npu的使用方式？", "back": "import torch\nimport torch_npu  # 加载昇腾支持\n\ndevice = torch.device('npu:0')\nx = torch.randn(10, 10).to(device)\ny = torch.matmul(x, x)  # 在NPU上执行\n\n# 模型迁移\nmodel = model.to('npu:0')\n# 训练代码基本不变\n\n限制: 部分算子未适配\n  会fallback到CPU(很慢)\n  需要检查算子覆盖率", "topic": "torch_npu", "day": "Day 78", "source": "torch_npu"}
+      ]
+    },
+    "6-7-1": {
+      "key_points": [
+        "国产GPU部署LLM: 使用PyTorch+torch_npu或MindFormers在昇腾上推理",
+        "步骤: 安装环境→加载模型→设置device('npu')→推理测试",
+        "常见问题: 算子不支持(fallback到CPU)、精度差异(BF16支持)、显存管理",
+        "推理框架: vLLM-NPU(社区适配)、MindIE(华为官方推理引擎)"
+      ],
+      "resources": [
+        {"name": "昇腾LLM推理", "url": "https://www.hiascend.com/"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-7-01", "front": "在国产GPU上部署LLM的挑战？", "back": "算子: 部分CUDA算子没有NPU版本\n  FlashAttention需要重写\n  自定义kernel需要Ascend C\n精度: BF16/FP16支持程度不同\n  可能有精度对齐问题\n性能: 通常是CUDA的60-80%\n  优化空间大\n生态: 缺少Triton等高级工具\n  kernel优化更依赖手工\n策略: 先跑通→再优化→再量产", "topic": "国产GPU部署", "day": "Day 79", "source": "昇腾"}
+      ]
+    },
+    "6-7-2": {
+      "key_points": [
+        "性能对比: 相同模型在NVIDIA GPU vs 国产GPU上的推理性能",
+        "指标: throughput(tokens/s)、latency、first token latency",
+        "典型结果: 昇腾910B约为A100的60-80%(取决于优化程度)",
+        "瓶颈分析: 通常在attention kernel和内存管理(PagedAttention适配)"
+      ],
+      "resources": [
+        {"name": "性能对比基准", "url": "https://www.hiascend.com/"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-7-02", "front": "国产GPU性能对比NVIDIA的典型结果？", "back": "昇腾910B vs A100:\n  推理throughput: 60-80%\n  训练throughput: 50-70%\n  主要差距: 软件优化\n海光DCU vs A100:\n  推理: 50-70%\n  训练: 40-60%\n  HIP迁移容易但优化不足\n优化方向:\n  attention kernel优化(最大)\n  内存管理优化\n  通信优化(多卡)\n趋势: 每代产品差距在缩小", "topic": "性能对比", "day": "Day 79", "source": "性能基准"}
+      ]
+    },
+    "6-8-1": {
+      "key_points": [
+        "常见适配问题: 算子缺失、精度不对齐、性能回退、驱动兼容",
+        "算子缺失: 用torch_npu.xxx替代或用Ascend C自定义",
+        "精度对齐: FP16/BF16在不同硬件上的rounding行为不同→微小误差累积",
+        "调试: 逐层对比CUDA和NPU的输出，找到精度发散的位置"
+      ],
+      "resources": [
+        {"name": "昇腾适配指南", "url": "https://www.hiascend.com/document"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-8-01", "front": "国产GPU适配的常见问题和解决方法？", "back": "算子缺失: Ascend C自定义实现\n精度不齐: 逐层对比输出\n  找到发散点→修正kernel\n性能回退: profile找瓶颈\n  通常是memory bound算子\n驱动兼容: 版本严格匹配\n  CANN/驱动/固件三件套\n调试流程:\n1. 先跑通(允许精度差)\n2. 精度对齐(逐层对比)\n3. 性能优化(profile→优化)", "topic": "适配", "day": "Day 80", "source": "昇腾适配指南"}
+      ]
+    },
+    "6-8-2": {
+      "key_points": [
+        "自写kernel适配: 将Phase 2写的Triton/CUDA kernel移植到国产GPU",
+        "RMSNorm迁移: CUDA kernel → Ascend C kernel或HIP kernel",
+        "Softmax迁移: 注意数值稳定性在不同硬件上的表现",
+        "性能调优: NPU的内存层次和计算单元不同于GPU，需要重新考虑tiling策略"
+      ],
+      "resources": [
+        {"name": "Ascend C编程", "url": "https://www.hiascend.com/document"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-8-02", "front": "CUDA kernel迁移到昇腾的关键步骤？", "back": "1. 理解NPU架构差异\n  AI Core vs CUDA Core\n  Cube Unit(矩阵) vs Tensor Core\n2. 选择开发方式\n  Ascend C(最灵活)\n  TBE(自动生成)\n3. 重写kernel\n  数据搬运: global→local(类似shared)\n  计算: 使用Cube/Vector单元\n4. 精度验证: 对比CUDA输出\n5. 性能调优: profile+优化tiling", "topic": "kernel迁移", "day": "Day 80", "source": "Ascend C"}
+      ]
+    },
+    "6-9-1": {
+      "key_points": [
+        "MLC-LLM多硬件: 通过TVM编译，支持多种硬件后端",
+        "昇腾支持: TVM有CANN后端(实验性)，可以编译模型到昇腾",
+        "价值: 一次编写，多端优化——减少每个硬件的适配成本",
+        "限制: 自动优化不如手写kernel，但开发效率高很多"
+      ],
+      "resources": [
+        {"name": "MLC-LLM", "url": "https://github.com/mlc-ai/mlc-llm"},
+        {"name": "TVM", "url": "https://tvm.apache.org/"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-9-01", "front": "编译器方法(TVM/MLC)对多硬件适配的价值？", "back": "传统: 每个硬件手写kernel\n  CUDA→手工→HIP→手工→CANN\n  N个硬件×M个算子 = N*M工作量\n编译器: TVM统一中间表示\n  一次编写→自动生成各硬件代码\n  工作量: M个算子(不乘N)\n权衡: 性能90% vs 手写95%+\n  开发效率提升5-10倍\n趋势: 编译器方法越来越主流", "topic": "编译器", "day": "Day 81", "source": "TVM/MLC-LLM"}
+      ]
+    },
+    "6-9-2": {
+      "key_points": [
+        "寒武纪BANG: 寒武纪MLU的编程语言，类C语法",
+        "特点: 面向MLU硬件的向量/矩阵编程，类似CUDA但有差异",
+        "MLU370: 寒武纪推理芯片，对标T4/A10，推理场景",
+        "生态: 寒武纪提供CNToolkit(类似CUDA Toolkit)"
+      ],
+      "resources": [
+        {"name": "寒武纪开发者社区", "url": "https://developer.cambricon.com/"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-9-02", "front": "寒武纪BANG和CUDA的区别？", "back": "BANG: 寒武纪MLU编程语言\n  类C语法，面向MLU硬件\n  向量编程为主(SIMD)\nCUDA: NVIDIA GPU编程\n  thread/warp/block层次\n  标量+向量混合\n差异:\n  BANG没有shared memory概念\n  内存模型不同(NRAM/WRAM)\n  编译: cncc(类似nvcc)\n生态: CNToolkit(类似CUDA Toolkit)\n  成熟度: 约CUDA的20%", "topic": "寒武纪", "day": "Day 81", "source": "寒武纪文档"}
+      ]
+    },
+    "6-10-1": {
+      "key_points": [
+        "self-llm: Datawhale的大模型部署教程，包含国产GPU部署章节",
+        "内容: 在昇腾/海光上部署Qwen/LLaMA/ChatGLM等模型的实操指南",
+        "步骤: 环境搭建→模型转换→推理测试→性能优化→服务部署",
+        "价值: 中文社区最完善的国产GPU部署教程之一"
+      ],
+      "resources": [
+        {"name": "self-llm", "url": "https://github.com/datawhalechina/self-llm"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-10-01", "front": "国产GPU部署LLM的标准流程？", "back": "1. 环境: 安装驱动+CANN/ROCm+框架\n2. 模型: 转换格式(如torch→mindspore)\n3. 适配: 替换不支持的算子\n4. 验证: 功能正确性(输出对比)\n5. 精度: 数值对齐(误差<1e-3)\n6. 性能: profile+kernel优化\n7. 服务: 部署API服务\n工具: self-llm教程(step by step)", "topic": "部署流程", "day": "Day 82", "source": "self-llm"}
+      ]
+    },
+    "6-10-2": {
+      "key_points": [
+        "国产GPU求职: 国产GPU适配经验在市场上很稀缺",
+        "岗位: 大厂AI Infra团队(华为/百度/字节)、国产GPU厂商(昇腾/海光/寒武纪)",
+        "技能要求: CUDA基础 + 至少一种国产GPU适配经验 + 推理/训练框架",
+        "面试重点: CUDA vs CANN/HIP的差异、算子迁移经验、性能优化"
+      ],
+      "resources": [
+        {"name": "AI Infra求职指南", "url": "https://github.com/datawhalechina/so-large-lm"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-10-02", "front": "国产GPU适配经验的简历价值？", "back": "稀缺性: 有CUDA+国产GPU经验的人很少\n岗位: AI Infra/GPU适配/异构计算\n公司: 华为/昇腾生态/海光/寒武纪\n  大厂AI平台团队\n加分项:\n  CUDA kernel开发经验\n  至少一种国产GPU适配\n  推理引擎(vLLM)适配\n  性能对比报告\n竞争力: GPU编程+国产适配=稀缺组合", "topic": "求职", "day": "Day 82", "source": "综合"}
+      ]
+    },
+    "6-11-1": {
+      "key_points": [
+        "国产GPU选型: 根据场景选择合适的国产GPU",
+        "训练: 昇腾910B/C(最成熟)、海光DCU Z100L(兼容ROCm)",
+        "推理: 昇腾310P(低功耗推理)、寒武纪MLU370(推理专用)",
+        "评估维度: 性能/功耗/生态/价格/供货/技术支持"
+      ],
+      "resources": [
+        {"name": "国产GPU选型", "url": "https://www.hiascend.com/"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-11-01", "front": "不同场景如何选择国产GPU？", "back": "训练(大规模):\n  首选: 昇腾910B/C(最成熟)\n  备选: 海光DCU(HIP兼容)\n推理(服务端):\n  昇腾310P(低功耗高效)\n  寒武纪MLU370(推理专用)\n边缘:\n  昇腾310(嵌入式)\n评估: 性能>生态>价格>供货\n现实: 大多数场景选昇腾\n  因为生态最成熟", "topic": "选型", "day": "Day 83", "source": "综合"}
+      ]
+    },
+    "6-11-2": {
+      "key_points": [
+        "端到端Demo: 从零在国产GPU上完成一个LLM推理服务Demo",
+        "内容: 模型加载→推理→API服务→性能报告",
+        "价值: 作为简历项目和面试谈资",
+        "技术栈: PyTorch+torch_npu/MindFormers + FastAPI/Flask"
+      ],
+      "resources": [
+        {"name": "昇腾LLM部署", "url": "https://www.hiascend.com/"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-11-02", "front": "国产GPU LLM推理Demo怎么做？", "back": "最小可行Demo:\n1. 安装: CANN+torch_npu\n2. 加载: model.to('npu:0')\n3. 推理: model.generate(input)\n4. API: FastAPI包装\n5. 性能: 记录throughput/latency\n6. 对比: vs CUDA版本的性能\n简历: '在昇腾910B上部署7B模型\n  推理速度达到A100的75%\n  解决了X个算子适配问题'", "topic": "Demo", "day": "Day 83", "source": "综合"}
+      ]
+    },
+    "6-12-1": {
+      "key_points": [
+        "全路径通关总结: 从LLM原理→GPU编程→推理引擎→C++框架→RL训练→国产GPU",
+        "六层能力: 理论基础→底层优化→系统设计→工程实现→算法对齐→硬件适配",
+        "核心竞争力: 全栈AI Infra工程师，从模型到硬件都能搞",
+        "简历亮点: MiniMind全流程+CUDA/Triton kernel+KuiperLLama+vLLM源码+RL训练+国产GPU"
+      ],
+      "resources": [
+        {"name": "学习计划总结", "url": "https://github.com/jingyaogong/minimind"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-12-01", "front": "84天学习计划的六层能力模型？", "back": "L1: LLM原理(MiniMind全流程)\nL2: GPU编程(CUDA/Triton kernel)\nL3: 推理引擎(nano-vllm→vLLM)\nL4: C++框架(KuiperLLama)\nL5: RL训练(PPO/GRPO/veRL)\nL6: 国产GPU(昇腾/海光适配)\n竞争力: 全栈AI Infra\n  从模型算法到GPU硬件\n  从原理理解到生产部署", "topic": "总结", "day": "Day 84", "source": "综合"}
+      ]
+    },
+    "6-12-2": {
+      "key_points": [
+        "求职简历项目包装: 6个核心项目分别对应6层能力",
+        "项目1: MiniMind LLM全流程(Pretrain→SFT→LoRA→DPO/PPO)",
+        "项目2: CUDA/Triton高性能kernel开发(GEMM/Softmax/Attention)",
+        "项目3-6: KuiperLLama/vLLM源码贡献/veRL训练/国产GPU适配"
+      ],
+      "resources": [
+        {"name": "综合项目", "url": "https://github.com/jingyaogong/minimind"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-12-02", "front": "AI Infra面试的六大核心问题？", "back": "1. Transformer: 公式+代码级理解\n2. CUDA/Triton: 写过什么kernel\n3. 推理: PagedAttention+ContinuousBatch\n4. KV Cache: 计算公式+优化方法\n5. RL: PPO vs DPO vs GRPO\n6. 国产GPU: CUDA→CANN/HIP迁移\n准备: 每个问题能讲30分钟\n  有代码+数据支撑", "topic": "面试", "day": "Day 84", "source": "综合"}
+      ]
+    },
+    "6-12-3": {
+      "key_points": [
+        "持续学习规划: Day 85+的学习方向和资源",
+        "方向1: 推理优化进阶(SGLang/Speculative Decoding/FlashInfer)",
+        "方向2: 分布式训练进阶(Megatron/Ring Attention/Sequence Parallel)",
+        "方向3: 论文追踪+开源贡献(给vLLM/veRL提PR)"
+      ],
+      "resources": [
+        {"name": "AI Infra持续学习", "url": "https://github.com/vllm-project/vllm"}
+      ],
+      "flashcards": [
+        {"id": "fc-6-12-03", "front": "Day 85+的持续学习方向？", "back": "推理进阶:\n  SGLang/FlashInfer/FlashAttention-3\n  Speculative Decoding变体\n训练进阶:\n  Megatron-LM/Ring Attention\n  Sequence Parallel/Context Parallel\n开源贡献:\n  给vLLM/SGLang/veRL提PR\n  从小bug fix开始\n论文:\n  每周精读1篇MLSys顶会论文\n社区: GitHub Trending+Twitter/X", "topic": "持续学习", "day": "Day 84", "source": "综合"}
+      ]
+    }
+  }
+}
