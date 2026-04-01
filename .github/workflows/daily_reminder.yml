@@ -1,0 +1,67 @@
+name: Daily Study Reminder
+
+on:
+  schedule:
+    # UTC 时间，北京时间 07:30 = UTC 23:30 (前一天)
+    - cron: '30 23 * * *'
+  workflow_dispatch:  # 手动触发（测试用）
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup config and send notifications
+        env:
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          STUDY_START_DATE: ${{ secrets.STUDY_START_DATE }}
+          JOB_START_DATE: ${{ secrets.JOB_START_DATE }}
+        run: |
+          python -c "
+          import json, os
+          from datetime import datetime
+
+          config = {
+              'pushplus_token': os.environ.get('PUSHPLUS_TOKEN', ''),
+              'feishu_webhook': os.environ.get('FEISHU_WEBHOOK', ''),
+              'feishu_secret': '',
+              'github_token': '',
+              'github_notes_repo': '',
+              'job_start_date': os.environ.get('JOB_START_DATE', '2026-07-02'),
+              'start_date': os.environ.get('STUDY_START_DATE', '2026-04-02'),
+              'remind_time': '07:30',
+              'initialized': True,
+          }
+
+          os.makedirs('data', exist_ok=True)
+          with open('data/config.json', 'w', encoding='utf-8') as f:
+              json.dump(config, f, ensure_ascii=False, indent=2)
+
+          # 生成 progress.json（根据 start_date 自动算天数）
+          start = datetime.strptime(config['start_date'], '%Y-%m-%d')
+          today = datetime.now()
+          day = max(1, (today - start).days + 1)
+          progress = {
+              'start_date': config['start_date'],
+              'current_day': day,
+              'completed_tasks': [],
+              'skipped_tasks': [],
+              'daily_logs': {},
+              'quiz_history': [],
+              'streak': 0,
+              'max_streak': 0,
+              'total_completed': 0,
+          }
+          with open('data/progress.json', 'w', encoding='utf-8') as f:
+              json.dump(progress, f, ensure_ascii=False, indent=2)
+
+          print(f'Config ready. Day {day}.')
+          "
+
+          python study.py notify
