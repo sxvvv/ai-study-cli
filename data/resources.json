@@ -74,15 +74,19 @@
       ]
     },
     "phase_6": {
-      "name": "国产GPU适配",
+      "name": "MetaX MACA适配",
       "materials": [
-        {"title": "华为昇腾CANN开发文档", "url": "https://www.hiascend.com/document", "type": "文档", "lang": "zh", "priority": "必读", "note": "AscendCL+算子开发指南"},
-        {"title": "海光DCU/ROCm开发", "url": "https://developer.hygon.com/", "type": "文档", "lang": "zh", "priority": "推荐", "note": "HIP编程，和CUDA 90%相似"},
-        {"title": "MindSpore框架文档", "url": "https://www.mindspore.cn/docs/zh-CN/master/index.html", "type": "文档", "lang": "zh", "priority": "推荐", "note": "华为生态主力框架"},
-        {"title": "MLC-LLM跨硬件适配", "url": "https://github.com/mlc-ai/mlc-llm", "type": "仓库", "lang": "en", "priority": "推荐", "note": "学习多后端抽象层设计"},
-        {"title": "vLLM硬件plugin代码", "url": "https://github.com/vllm-project/vllm", "type": "源码", "lang": "en", "priority": "推荐", "note": "看vLLM如何支持Ascend/Gaudi等"},
-        {"title": "Datawhale self-llm: SGLang部署", "url": "https://github.com/datawhalechina/self-llm", "type": "教程", "lang": "zh", "priority": "选读", "note": "多框架部署参考"},
-        {"title": "寒武纪开发者中心", "url": "https://developer.cambricon.com/", "type": "文档", "lang": "zh", "priority": "选读", "note": "BANG编程指南"}
+        {"title": "MACA Overview官方文档", "url": "https://developer.metax-tech.com/softwaredoc/MACA/maca_overview/latest/content/index.html", "type": "文档", "lang": "zh", "priority": "必读", "note": "MACA架构总览、CUDA/HIP兼容性说明"},
+        {"title": "MACA C++编程指南", "url": "https://developer.metax-tech.com/softwaredoc/MACA/maca_cplusplus_programming_guide/latest/content/index.html", "type": "文档", "lang": "zh", "priority": "必读", "note": "kernel开发、内存管理、编译器使用"},
+        {"title": "MetaX-MACA GitHub示例", "url": "https://github.com/MetaX-MACA", "type": "仓库", "lang": "en", "priority": "必读", "note": "vectorAdd/matrixMul/transpose/deviceQuery等官方示例"},
+        {"title": "MACA Runtime API文档", "url": "https://developer.metax-tech.com/softwaredoc/MACA/maca_runtime_api/latest/content/index.html", "type": "文档", "lang": "zh", "priority": "必读", "note": "macaMalloc/macaMemcpy等完整API参考"},
+        {"title": "HIP 5.7编程指南(AMD ROCm)", "url": "https://rocm.docs.amd.com/", "type": "文档", "lang": "en", "priority": "推荐", "note": "MACA基于HIP 5.7，理解HIP有助于理解MACA"},
+        {"title": "MACA DL框架支持文档", "url": "https://developer.metax-tech.com/softwaredoc/MACA/maca_dl_support/latest/content/index.html", "type": "文档", "lang": "zh", "priority": "推荐", "note": "torch_maca/PyTorch/TF适配指南"},
+        {"title": "Next Platform: MetaX C550评测", "url": "https://www.nextplatform.com/2024/09/10/the-metax-c550-is-a-solid-cuda-compatible-chinese-gpu/", "type": "文章", "lang": "en", "priority": "推荐", "note": "第三方深度评测，了解硬件真实性能"},
+        {"title": "CUDA编程指南(MACA兼容参考)", "url": "https://docs.nvidia.com/cuda/", "type": "文档", "lang": "en", "priority": "推荐", "note": "MACA兼容CUDA API，对照阅读"},
+        {"title": "Datawhale self-llm: 部署教程", "url": "https://github.com/datawhalechina/self-llm", "type": "教程", "lang": "zh", "priority": "推荐", "note": "国产GPU部署LLM的实操参考"},
+        {"title": "沐曦官网", "url": "https://www.metax-tech.com/", "type": "官网", "lang": "zh", "priority": "选读", "note": "产品介绍、新闻动态"},
+        {"title": "Next Platform: MetaX C600", "url": "https://www.nextplatform.com/2024/11/06/metax-is-trying-to-leapfrog-its-china-rivals-with-the-c600-gpu/", "type": "文章", "lang": "en", "priority": "选读", "note": "C600旗舰GPU评测"}
       ]
     }
   }

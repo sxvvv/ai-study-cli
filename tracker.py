@@ -163,7 +163,7 @@ def get_phase_info(day):
         (28, 45, 3, "推理引擎"),
         (46, 58, 4, "自制推理框架"),
         (59, 72, 5, "RL训练基建"),
-        (73, 84, 6, "国产GPU适配"),
+        (73, 84, 6, "MetaX MACA适配"),
     ]
     for start, end, phase_id, name in phases:
         if start <= day <= end:

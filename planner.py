@@ -1,7 +1,7 @@
 """每日任务生成模块"""
 import random
 from config import CURRICULUM_FILE, load_json
-from content_engine import get_enriched_day_tasks
+from content_engine import get_enriched_day_tasks, load_project_for_phase
 from tracker import (
     get_progress, get_phase_info, start_if_needed, get_current_day,
     is_open_mode, get_days_until_job, TOTAL_DAYS
@@ -19,6 +19,9 @@ MOTIVATIONAL_QUOTES = [
     "坚持打卡本身就是一种能力的证明。",
     "你的竞争力 = 你愿意深入的程度。",
     "国产GPU适配需要的就是你这样愿意啃骨头的人。",
+    "MACA兼容HIP，你已有的CUDA经验就是最好的起点。",
+    "mc-clang能自动转换90%的CUDA代码，剩下10%才是你真正需要理解的。",
+    "沐曦入职后，你就是MACA生态的核心建设者。",
     "RL训练不稳定是常态，别被loss吓到。",
     "先读懂数据流，再读懂计算逻辑。",
     "Profile before optimize. 别猜瓶颈在哪。",
@@ -134,6 +137,30 @@ def _format_today(day, phase_info, tasks, progress):
 
     lines.extend([
         "╠══════════════════════════════════════════════════╣",
+    ])
+
+    # 显示项目里程碑进度
+    project = load_project_for_phase(phase_info['phase_id'])
+    if project:
+        milestones = project.get("milestones", [])
+        reached = sum(1 for m in milestones if m["day"] <= day)
+        total_m = len(milestones)
+        proj_bar_len = 20
+        proj_pct = reached / total_m if total_m > 0 else 0
+        proj_filled = int(proj_bar_len * proj_pct)
+        proj_bar = "█" * proj_filled + "░" * (proj_bar_len - proj_filled)
+        next_milestone = None
+        for m in milestones:
+            if m["day"] > day:
+                next_milestone = m
+                break
+        lines.append(f"║  🎯 项目: {project['title']}")
+        lines.append(f"║     [{proj_bar}] {reached}/{total_m} 里程碑")
+        if next_milestone:
+            lines.append(f"║     ▶ 下一步: {next_milestone['task']} (Day {next_milestone['day']})")
+        lines.append("║")
+
+    lines.extend([
         f"║  💡 {quote}",
         "╚══════════════════════════════════════════════════╝",
     ])

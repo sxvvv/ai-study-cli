@@ -262,6 +262,104 @@ def cmd_refresh():
     print(f"✅ 已生成 {count} 张闪卡到 data/flashcards.json")
 
 
+def cmd_project():
+    """显示当前阶段的实战项目"""
+    from content_engine import load_project_for_phase
+
+    progress = get_progress()
+    progress = start_if_needed(progress)
+    current_day = get_current_day(progress)
+    phase_info = get_phase_info(current_day)
+
+    project = load_project_for_phase(phase_info["phase_id"])
+    if not project:
+        print("当前阶段没有关联的实战项目")
+        return
+
+    lines = [
+        "╔══════════════════════════════════════════════════╗",
+        f"║  🎯 阶段{phase_info['phase_id']} 实战项目",
+        "╠══════════════════════════════════════════════════╣",
+        "║",
+        f"║  📦 {project['title']}",
+        f"║  {project['description']}",
+        "║",
+        f"║  🏆 交付目标:",
+        f"║  {project['deliverable']}",
+        "║",
+        "║  📋 里程碑:",
+    ]
+
+    for m in project.get("milestones", []):
+        if m["day"] < current_day:
+            status = "✅"
+        elif m["day"] == current_day:
+            status = "🔄"
+        else:
+            status = "⬜"
+        lines.append(f"║  {status} Day {m['day']}: {m['task']}")
+        lines.append(f"║       {m['desc']}")
+
+    lines.extend([
+        "║",
+        "╚══════════════════════════════════════════════════╝",
+    ])
+    print("\n".join(lines))
+
+
+def cmd_tutor():
+    """显示交互式辅导使用说明"""
+    progress = get_progress()
+    progress = start_if_needed(progress)
+    current_day = get_current_day(progress)
+    phase_info = get_phase_info(current_day)
+
+    print(f"""
+╔══════════════════════════════════════════════════╗
+║          🎓 Interactive Tutor Mode                ║
+╠══════════════════════════════════════════════════╣
+║
+║  当前: Day {current_day} ({phase_info['phase_name']})
+║
+║  在 Claude Code 中使用以下命令开始交互学习:
+║
+║  /study-tutor          - 今日任务逐步引导学习
+║  /study-dive <主题>    - 深度专题学习
+║  /study-code           - 编程练习(按阶段出题)
+║  /study-review         - 交互式闪卡复习
+║
+║  也可以直接用自然语言:
+║  "帮我理解今天的任务"
+║  "解释一下 MACA 和 CUDA 的区别"
+║  "出个 Triton 编程练习题"
+║
+╚══════════════════════════════════════════════════╝
+""")
+
+
+def cmd_generate(subcmd=""):
+    """动态内容生成"""
+    if subcmd == "quiz":
+        from generate_content import generate_missing_quizzes
+        count = generate_missing_quizzes()
+        print(f"✅ 已生成 {count} 道新quiz题")
+    elif subcmd == "flash":
+        from generate_content import generate_missing_flashcards
+        count = generate_missing_flashcards()
+        print(f"✅ 闪卡库已刷新，共 {count} 张闪卡")
+    elif subcmd == "resources":
+        from generate_content import generate_resources_from_keywords
+        keywords = input("请输入关键词(空格分隔): ").strip().split()
+        resources = generate_resources_from_keywords(keywords)
+        for res in resources:
+            print(f"  → {res['name']}: {res['url']}")
+    else:
+        print("用法: study generate <quiz|flash|resources>")
+        print("  quiz      - 为没有quiz的任务自动生成题目")
+        print("  flash     - 刷新闪卡库")
+        print("  resources - 从关键词生成资源搜索链接")
+
+
 def cmd_quiz():
     """知识自测"""
     questions, error = get_quiz_questions(3)
@@ -546,6 +644,13 @@ def main():
         cmd_remind(time_str)
     elif command == "refresh":
         cmd_refresh()
+    elif command == "project":
+        cmd_project()
+    elif command == "tutor":
+        cmd_tutor()
+    elif command == "generate":
+        subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
+        cmd_generate(subcmd)
     elif command in ("help", "-h", "--help"):
         cmd_help()
     else:

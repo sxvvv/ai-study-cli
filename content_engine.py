@@ -14,7 +14,7 @@ def _load_guide(phase_id):
         3: "phase3_inference_engine",
         4: "phase4_build_framework",
         5: "phase5_rl_training",
-        6: "phase6_domestic_gpu",
+        6: "phase6_metax_maca",
     }
     filename = phase_names.get(phase_id, "")
     if not filename:
@@ -52,7 +52,9 @@ def merge_task_with_enrichment(task):
 
     enrichment = load_enrichment(task_id)
     if not enrichment:
-        return task
+        # 动态fallback: 从task的title/desc生成基础内容
+        from generate_content import get_dynamic_enrichment
+        return get_dynamic_enrichment(task)
 
     # 合并：task 自带的优先
     merged = dict(task)
@@ -114,6 +116,16 @@ def load_open_topics():
     """加载持续学习主题库（Day 85+）"""
     filepath = os.path.join(GUIDES_DIR, "open_topics.json")
     return load_json(filepath) or {"topics": []}
+
+
+def load_project_for_phase(phase_id):
+    """加载指定阶段的实战项目信息"""
+    filepath = os.path.join(GUIDES_DIR, "projects.json")
+    data = load_json(filepath) or {"projects": []}
+    for proj in data.get("projects", []):
+        if proj.get("phase") == phase_id:
+            return proj
+    return None
 
 
 def get_open_mode_daily(current_day):

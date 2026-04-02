@@ -22,6 +22,8 @@ AI_KEYWORDS = [
     "pytorch", "tensorflow", "jax", "大模型", "推理", "训练", "微调",
     "量化", "算子", "显卡", "人工智能", "深度学习", "机器学习",
     "自然语言处理", "nlp", "cv", "多模态", "agent", "rag",
+    "metax", "maca", "macablas", "macadnn", "沐曦", "国产芯片", "国产gpu",
+    "datawhale", "miniMind", "nanovllm",
 ]
 
 

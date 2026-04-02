@@ -1,0 +1,87 @@
+{
+  "projects": [
+    {
+      "phase": 1,
+      "title": "MiniMind 26M LLM 全流程训练",
+      "description": "完成 Pretrain → SFT → LoRA → DPO/PPO 全流程，训练一个能对话的小LLM",
+      "deliverable": "一个训练好的26M参数模型，能生成连贯中文文本",
+      "start_day": 1,
+      "milestones": [
+        {"day": 3, "task": "环境搭建 + 首次推理运行", "desc": "克隆MiniMind，跑通inference"},
+        {"day": 7, "task": "理解并修改Transformer架构", "desc": "能讲清每一层的作用"},
+        {"day": 10, "task": "完成SFT微调", "desc": "用自定义数据做SFT"},
+        {"day": 14, "task": "完成DPO/PPO训练", "desc": "理解RLHF全流程"},
+        {"day": 15, "task": "项目报告", "desc": "训练曲线、sample outputs、心得"}
+      ]
+    },
+    {
+      "phase": 2,
+      "title": "Triton Kernel Collection",
+      "description": "构建一组优化的Triton kernel：RMSNorm、Softmax、GEMM、Fused Attention",
+      "deliverable": "一个包含5+个Triton kernel的repo，每个都benchmark过对比PyTorch原生",
+      "start_day": 16,
+      "milestones": [
+        {"day": 18, "task": "Vector Add + Element-wise kernels", "desc": "熟悉Triton编程模型"},
+        {"day": 21, "task": "Softmax kernel（数值稳定）", "desc": "online softmax实现"},
+        {"day": 24, "task": "Fused RMSNorm kernel（超PyTorch）", "desc": "性能benchmark"},
+        {"day": 27, "task": "FlashAttention mini实现 + benchmark", "desc": "Phase 2收官kernel"}
+      ]
+    },
+    {
+      "phase": 3,
+      "title": "nano-vllm 架构深度理解",
+      "description": "精读nano-vllm源码，写详细架构文档，添加一个feature或fork增强",
+      "deliverable": "架构文档 + 至少一个有意义的代码贡献或增强",
+      "start_day": 28,
+      "milestones": [
+        {"day": 30, "task": "精读并文档化Scheduler模块", "desc": "画出调度流程图"},
+        {"day": 34, "task": "精读并文档化PagedAttention实现", "desc": "理解block分配/释放"},
+        {"day": 38, "task": "精读并文档化Continuous Batching逻辑", "desc": "iteration-level调度"},
+        {"day": 42, "task": "添加feature或写详细架构文档", "desc": "可以fork增强"},
+        {"day": 45, "task": "对比nano-vllm vs vLLM V1架构", "desc": "理解设计取舍"}
+      ]
+    },
+    {
+      "phase": 4,
+      "title": "KuiperLLama C++推理引擎",
+      "description": "基于KuiperLLama或llama2.c搭建一个最小C++推理引擎",
+      "deliverable": "一个能跑的C++推理引擎，支持KV cache，能推理小模型",
+      "start_day": 46,
+      "milestones": [
+        {"day": 48, "task": "llama2.c编译运行", "desc": "700行C代码跑通推理"},
+        {"day": 51, "task": "理解权重加载和矩阵运算", "desc": "手写矩阵乘法"},
+        {"day": 54, "task": "KV cache实现", "desc": "理解增量推理"},
+        {"day": 57, "task": "添加量化支持", "desc": "INT4/INT8量化"},
+        {"day": 58, "task": "Benchmark vs llama.cpp", "desc": "性能对比报告"}
+      ]
+    },
+    {
+      "phase": 5,
+      "title": "veRL PPO训练Pipeline",
+      "description": "搭建并跑通完整PPO训练pipeline，对比PPO/DPO/GRPO",
+      "deliverable": "一个用PPO训练好的模型 + 训练日志 + PPO/DPO/GRPO对比报告",
+      "start_day": 59,
+      "milestones": [
+        {"day": 61, "task": "veRL环境搭建 + GSM8K示例", "desc": "跑通官方example"},
+        {"day": 64, "task": "理解Actor-Critic架构", "desc": "读源码理解通信"},
+        {"day": 67, "task": "对比veRL vs OpenRLHF架构", "desc": "设计差异分析"},
+        {"day": 70, "task": "跑通完整PPO训练", "desc": "自定义reward"},
+        {"day": 72, "task": "PPO vs DPO vs GRPO对比报告", "desc": "训练曲线+效果对比"}
+      ]
+    },
+    {
+      "phase": 6,
+      "title": "MACA LLM推理服务",
+      "description": "在沐曦MACA平台上搭建完整LLM推理服务，含性能对比报告",
+      "deliverable": "在MACA上运行的LLM推理API + CUDA-to-MACA迁移指南 + 性能报告",
+      "start_day": 73,
+      "milestones": [
+        {"day": 75, "task": "MACA环境搭建 + mc_smi验证", "desc": "SDK安装、deviceQuery跑通"},
+        {"day": 77, "task": "CUDA→MACA迁移简单模型", "desc": "vectorAdd/matrixMul跑通"},
+        {"day": 80, "task": "自定义kernel移植到MACA", "desc": "Phase 2的kernel迁移验证"},
+        {"day": 82, "task": "完整LLM推理在MACA上跑通", "desc": "torch_maca + generate()"},
+        {"day": 84, "task": "性能报告 + 迁移指南文档", "desc": "MACA vs CUDA对比 + checklist"}
+      ]
+    }
+  ]
+}

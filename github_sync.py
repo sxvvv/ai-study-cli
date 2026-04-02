@@ -18,7 +18,7 @@ PHASE_DIR_MAP = {
     3: "inference",
     4: "inference-framework",
     5: "rl-training",
-    6: "domestic-gpu",
+    6: "metax-maca",
 }
 
 # 支持的自定义主题目录

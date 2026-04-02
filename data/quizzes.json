@@ -39,8 +39,8 @@
     {"id": "q-5-03", "after_day": 67, "question": "veRL和OpenRLHF在架构设计上最大的区别是什么？", "hint": "编排方式、数据传输策略", "tags": ["rl", "framework"]},
     {"id": "q-5-04", "after_day": 70, "question": "DeepSpeed ZeRO Stage 1/2/3分别切分了什么？RL训练中通常用哪个Stage？", "hint": "1=optimizer states, 2=+gradients, 3=+parameters", "tags": ["distributed", "deepspeed"]},
 
-    {"id": "q-6-01", "after_day": 74, "question": "华为昇腾的达芬奇架构和NVIDIA GPU架构的核心区别是什么？", "hint": "Cube Unit vs Tensor Core，控制流差异", "tags": ["hardware", "ascend"]},
-    {"id": "q-6-02", "after_day": 76, "question": "CUDA代码迁移到HIP(海光DCU)时最常见的兼容性问题有哪些？", "hint": "hipify工具的局限、warp size差异", "tags": ["hardware", "hip"]},
-    {"id": "q-6-03", "after_day": 80, "question": "把一个CUDA kernel适配到国产GPU时，通常需要修改哪些层面？", "hint": "编程API、内存模型、算子库、编译工具链", "tags": ["hardware", "adaptation"]}
+    {"id": "q-6-01", "after_day": 74, "question": "MACA软件栈的层次结构是什么？macaBLAS/macaDNN分别对应CUDA的哪些库？", "hint": "MACA Runtime/Driver层次，macaBLAS↔cuBLAS，macaDNN↔cuDNN", "tags": ["hardware", "maca"]},
+    {"id": "q-6-02", "after_day": 76, "question": "mc-clang迁移工具的原理是什么？它能自动处理哪些CUDA API？哪些需要手动修改？", "hint": "基于hipify-clang，自动转换90%+，PTX内联汇编和cuDNN特定调用需手动", "tags": ["hardware", "maca"]},
+    {"id": "q-6-03", "after_day": 80, "question": "沐曦C500/C550/C600的产品定位区别？torch_maca如何让PyTorch跑在沐曦GPU上？", "hint": "C500入门/C550中端/C600旗舰；torch_maca类似torch_npu，device='maca:0'", "tags": ["hardware", "maca"]}
   ]
 }

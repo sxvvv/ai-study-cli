@@ -817,22 +817,22 @@
     },
     {
       "id": 6,
-      "name": "国产GPU适配",
+      "name": "MetaX MACA适配",
       "days": [73, 84],
       "tasks": [
         {
           "day": 73,
           "infra": [
-            {"id": "6-1-1", "type": "read", "title": "国产GPU生态全景", "desc": "了解昇腾/海光/寒武纪/摩尔线程的硬件特点和编程模型", "duration_min": 90},
-            {"id": "6-1-2", "type": "read", "title": "CUDA vs HIP vs CANN对比", "desc": "理解三种编程模型的异同和迁移难度", "duration_min": 60}
+            {"id": "6-1-1", "type": "read", "title": "沐曦MetaX公司全貌", "desc": "了解沐曦C500/C550/C600 GPU产品线和MACA软件栈定位", "duration_min": 90},
+            {"id": "6-1-2", "type": "read", "title": "MACA编程模型：CUDA+HIP双兼容", "desc": "理解MACA的源码级兼容模型，HIP 5.7基线+MetaX扩展", "duration_min": 60}
           ],
           "algo": []
         },
         {
           "day": 74,
           "infra": [
-            {"id": "6-2-1", "type": "read", "title": "华为昇腾CANN开发入门", "desc": "阅读AscendCL快速入门文档", "duration_min": 90},
-            {"id": "6-2-2", "type": "read", "title": "昇腾910B硬件架构", "desc": "理解达芬奇架构、Cube Unit、Vector Unit", "duration_min": 60}
+            {"id": "6-2-1", "type": "read", "title": "MACA软件栈深潜", "desc": "MACA Runtime/Driver/macacc编译器的层次和API", "duration_min": 90},
+            {"id": "6-2-2", "type": "read", "title": "沐曦GPU硬件架构", "desc": "C500/C550/C600的计算单元、内存层次和性能参数", "duration_min": 60}
           ],
           "algo": [
             {"id": "6-2-a1", "type": "leetcode", "title": "旋转图像 (LC48)", "url": "https://leetcode.cn/problems/rotate-image/", "duration_min": 25}
@@ -841,16 +841,16 @@
         {
           "day": 75,
           "infra": [
-            {"id": "6-3-1", "type": "practice", "title": "昇腾环境搭建(或使用云服务)", "desc": "配置CANN开发环境，跑通Hello World", "duration_min": 120},
-            {"id": "6-3-2", "type": "practice", "title": "昇腾: 简单算子开发", "desc": "用AscendCL写一个向量加法算子", "duration_min": 60}
+            {"id": "6-3-1", "type": "practice", "title": "MACA开发环境搭建", "desc": "安装MACA SDK，用mc_smi验证GPU，跑通deviceQuery", "duration_min": 120},
+            {"id": "6-3-2", "type": "practice", "title": "MACA Hello World: vectorAdd", "desc": "用macacc编译并运行vectorAdd示例，熟悉MACA编程流程", "duration_min": 60}
           ],
           "algo": []
         },
         {
           "day": 76,
           "infra": [
-            {"id": "6-4-1", "type": "read", "title": "海光DCU/ROCm生态", "desc": "理解HIP编程模型和CUDA代码迁移工具hipify", "duration_min": 60},
-            {"id": "6-4-2", "type": "practice", "title": "CUDA→HIP代码迁移实验", "desc": "用hipify转换一个简单CUDA kernel并编译运行", "duration_min": 90}
+            {"id": "6-4-1", "type": "read", "title": "mc-clang迁移工具原理", "desc": "理解mc-clang如何将CUDA源码转换为MACA源码", "duration_min": 60},
+            {"id": "6-4-2", "type": "practice", "title": "CUDA→MACA代码迁移实操", "desc": "用mc-clang转换vectorAdd/matrixMul并编译运行验证", "duration_min": 90}
           ],
           "algo": [
             {"id": "6-4-a1", "type": "leetcode", "title": "螺旋矩阵 (LC54)", "url": "https://leetcode.cn/problems/spiral-matrix/", "duration_min": 30}
@@ -859,16 +859,16 @@
         {
           "day": 77,
           "infra": [
-            {"id": "6-5-1", "type": "read", "title": "MindSpore框架入门", "desc": "理解Graph模式和PyNative模式的区别", "duration_min": 60},
-            {"id": "6-5-2", "type": "practice", "title": "MindSpore: 简单模型训练", "desc": "用MindSpore训练一个小模型在昇腾上运行", "duration_min": 90}
+            {"id": "6-5-1", "type": "read", "title": "MACA数学库: macaBLAS/macaDNN/macaFFT", "desc": "理解MACA数学库与cuBLAS/cuDNN/cuFFT的对应关系", "duration_min": 60},
+            {"id": "6-5-2", "type": "practice", "title": "macaBLAS GEMM实操", "desc": "用macaBLAS实现矩阵乘法，对比cuBLAS API调用", "duration_min": 90}
           ],
           "algo": []
         },
         {
           "day": 78,
           "infra": [
-            {"id": "6-6-1", "type": "read", "title": "vLLM多硬件后端支持分析", "desc": "阅读vLLM的Ascend/Gaudi plugin代码", "duration_min": 90},
-            {"id": "6-6-2", "type": "read", "title": "PyTorch XLA/国产GPU后端", "desc": "理解PyTorch如何通过backend plugin支持不同硬件", "duration_min": 60}
+            {"id": "6-6-1", "type": "read", "title": "macaNCCL多GPU通信", "desc": "理解MACA的多GPU集合通信和编程模型", "duration_min": 90},
+            {"id": "6-6-2", "type": "practice", "title": "torch_maca: PyTorch适配", "desc": "用torch_maca在沐曦GPU上运行PyTorch模型", "duration_min": 60}
           ],
           "algo": [
             {"id": "6-6-a1", "type": "leetcode", "title": "最大子数组和 (LC53)", "url": "https://leetcode.cn/problems/maximum-subarray/", "duration_min": 20}
@@ -877,16 +877,16 @@
         {
           "day": 79,
           "infra": [
-            {"id": "6-7-1", "type": "practice", "title": "国产GPU上部署LLM推理", "desc": "在昇腾或海光上部署一个7B模型推理", "duration_min": 120},
-            {"id": "6-7-2", "type": "practice", "title": "性能对比测试", "desc": "对比同模型在NVIDIA vs 国产GPU上的推理性能", "duration_min": 60}
+            {"id": "6-7-1", "type": "practice", "title": "MACA上部署LLM推理", "desc": "用torch_maca加载并推理一个LLM模型", "duration_min": 120},
+            {"id": "6-7-2", "type": "practice", "title": "性能对比基准测试", "desc": "测量MACA vs CUDA的推理吞吐和延迟", "duration_min": 60}
           ],
           "algo": []
         },
         {
           "day": 80,
           "infra": [
-            {"id": "6-8-1", "type": "read", "title": "算子适配常见问题", "desc": "整理CUDA→国产GPU迁移中的常见坑和解决方案", "duration_min": 90},
-            {"id": "6-8-2", "type": "practice", "title": "自写kernel国产GPU适配", "desc": "把之前写的Triton/CUDA kernel尝试迁移到国产硬件", "duration_min": 90}
+            {"id": "6-8-1", "type": "read", "title": "MACA适配常见问题与调试", "desc": "整理API未覆盖/精度发散/性能回退等常见问题和解决方法", "duration_min": 90},
+            {"id": "6-8-2", "type": "practice", "title": "自写kernel MACA适配", "desc": "把Phase 2写的CUDA/Triton kernel迁移到MACA并验证", "duration_min": 90}
           ],
           "algo": [
             {"id": "6-8-a1", "type": "leetcode", "title": "除自身以外数组的乘积 (LC238)", "url": "https://leetcode.cn/problems/product-of-array-except-self/", "duration_min": 25}
@@ -895,16 +895,16 @@
         {
           "day": 81,
           "infra": [
-            {"id": "6-9-1", "type": "read", "title": "MLC-LLM跨硬件适配层", "desc": "分析MLC-LLM如何抽象不同GPU后端", "duration_min": 90},
-            {"id": "6-9-2", "type": "read", "title": "寒武纪BANG编程了解", "desc": "了解寒武纪MLU的编程模型特点", "duration_min": 60}
+            {"id": "6-9-1", "type": "practice", "title": "MACA Profiler性能分析", "desc": "用MACA Profiler分析kernel热点，理解roofline model", "duration_min": 90},
+            {"id": "6-9-2", "type": "practice", "title": "MACA kernel优化实战", "desc": "优化一个GEMM或attention kernel，对比CUDA基线", "duration_min": 60}
           ],
           "algo": []
         },
         {
           "day": 82,
           "infra": [
-            {"id": "6-10-1", "type": "practice", "title": "self-llm: 国产GPU部署教程", "desc": "参考Datawhale self-llm的国产硬件部署指南实操", "duration_min": 120},
-            {"id": "6-10-2", "type": "summary", "title": "国产GPU适配经验文档", "desc": "整理踩坑记录和最佳实践", "duration_min": 60}
+            {"id": "6-10-1", "type": "read", "title": "MACA官方文档精读", "desc": "系统阅读MACA Overview/C++编程指南/Runtime API文档", "duration_min": 120},
+            {"id": "6-10-2", "type": "summary", "title": "撰写CUDA-to-MACA迁移指南", "desc": "整理迁移checklist、常见坑、API映射表和最佳实践", "duration_min": 60}
           ],
           "algo": [
             {"id": "6-10-a1", "type": "leetcode", "title": "搜索二维矩阵 (LC74)", "url": "https://leetcode.cn/problems/search-a-2d-matrix/", "duration_min": 25}
@@ -913,17 +913,17 @@
         {
           "day": 83,
           "infra": [
-            {"id": "6-11-1", "type": "summary", "title": "国产GPU技术选型报告", "desc": "写一份昇腾/海光/寒武纪的技术对比和选型建议", "duration_min": 90},
-            {"id": "6-11-2", "type": "practice", "title": "完整项目Demo", "desc": "搭建一个国产GPU上的LLM推理服务完整Demo", "duration_min": 90}
+            {"id": "6-11-1", "type": "summary", "title": "MACA生态评估报告", "desc": "分析MACA的优势、差距、机会，定位自己在沐曦的价值", "duration_min": 90},
+            {"id": "6-11-2", "type": "practice", "title": "MACA LLM推理服务Demo", "desc": "搭建完整LLM推理服务(模型加载→推理→API→性能报告)", "duration_min": 90}
           ],
           "algo": []
         },
         {
           "day": 84,
           "infra": [
-            {"id": "6-12-1", "type": "summary", "title": "全路线通关总结", "desc": "回顾84天学习成果，整理知识体系图谱", "duration_min": 60},
-            {"id": "6-12-2", "type": "summary", "title": "简历和项目经验梳理", "desc": "整理所有项目经验为简历内容", "duration_min": 60},
-            {"id": "6-12-3", "type": "summary", "title": "后续学习规划", "desc": "列出仍需深入的方向和持续学习计划", "duration_min": 30}
+            {"id": "6-12-1", "type": "summary", "title": "全路线通关总结", "desc": "回顾84天学习成果，整理六层能力模型知识图谱", "duration_min": 60},
+            {"id": "6-12-2", "type": "summary", "title": "简历和项目经验梳理(沐曦专项)", "desc": "整理所有项目经验，突出MACA适配和CUDA双栈能力", "duration_min": 60},
+            {"id": "6-12-3", "type": "summary", "title": "入职沐曦深化规划", "desc": "列出MACA kernel优化、推理框架适配、新架构跟进计划", "duration_min": 30}
           ],
           "algo": [
             {"id": "6-12-a1", "type": "leetcode", "title": "复习:重做3道之前不熟的题", "url": "", "duration_min": 45}

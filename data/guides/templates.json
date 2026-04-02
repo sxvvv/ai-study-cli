@@ -1,0 +1,12 @@
+{
+  "quiz_templates": [
+    {"pattern": "请解释{concept}的原理，以及它在{domain}中的应用。", "tags": ["{domain}"]},
+    {"pattern": "{concept_a}和{concept_b}的核心区别是什么？各有什么优劣？", "tags": ["comparison"]},
+    {"pattern": "{concept}的实现中，最关键的设计决策是什么？为什么？", "tags": ["design"]}
+  ],
+  "flashcard_templates": [
+    {"front_pattern": "什么是{concept}？核心原理是什么？", "back_pattern": "{context}"},
+    {"front_pattern": "{concept}的关键实现步骤是什么？", "back_pattern": "1. {step1}\n2. {step2}\n3. {step3}"},
+    {"front_pattern": "{concept}和{alternative}有什么区别？", "back_pattern": "{comparison}"}
+  ]
+}
