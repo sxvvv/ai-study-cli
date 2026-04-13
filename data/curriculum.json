@@ -1,682 +1,549 @@
 {
-  "total_days": 84,
+  "total_days": 18,
   "phases": [
     {
       "id": 1,
-      "name": "LLM从零理解",
-      "days": [1, 15],
+      "name": "量化基础 (Lec5)",
+      "days": [1, 2],
       "tasks": [
         {
           "day": 1,
           "infra": [
             {
-              "id": "1-1-1", "type": "read", "title": "Transformer原理精读(Attention Is All You Need)", "duration_min": 90,
-              "desc": "重点理解Self-Attention、Multi-Head、Position Encoding",
+              "id": "1-1-1", "type": "read", "title": "理解量化公式: q=round(r/S+Z)", "duration_min": 45,
+              "desc": "手推scale(S)和zero-point(Z)的计算过程，理解均匀量化的数学本质",
               "key_points": [
-                "Attention(Q,K,V) = softmax(QK^T / sqrt(d_k)) V — 理解每个符号含义",
-                "Multi-Head: 将d_model拆成h个头，每个头独立做attention再拼接",
-                "Encoder-Decoder结构 vs Decoder-only(GPT) — MiniMind用的是哪种？",
-                "Position Encoding: 为什么需要？sin/cos编码的直觉是什么？"
+                "量化公式: q = round(r/S + Z)，r=原值，q=量化值，S=scale，Z=zero-point",
+                "S = (rmax - rmin) / (qmax - qmin)，Z = round(qmin - rmin/S)",
+                "反量化: r_hat = S * (q - Z)，量化误差 = |r - r_hat|",
+                "关键洞察: 量化本质是用更少的bit去近似原来的数值范围，误差不可避免"
               ],
               "resources": [
-                {"name": "so-large-lm Transformer结构详解", "url": "https://github.com/datawhalechina/so-large-lm/blob/main/docs/chapter2/1.transformer%E7%BB%93%E6%9E%84.md"},
-                {"name": "so-large-lm Attention机制", "url": "https://github.com/datawhalechina/so-large-lm/blob/main/docs/chapter2/2.attention%E6%9C%BA%E5%88%B6.md"},
-                {"name": "Jay Alammar: The Illustrated Transformer", "url": "https://jalammar.github.io/illustrated-transformer/"},
-                {"name": "3Blue1Brown: Attention可视化", "url": "https://www.bilibili.com/video/BV1TZ421j7Ke"}
+                {"name": "Lec5 Slides: Quantization I", "url": "https://hanlab.mit.edu/courses/2024-fall-65940"}
               ]
             },
             {
-              "id": "1-1-2", "type": "practice", "title": "MiniMind环境搭建+推理测试", "duration_min": 60,
-              "desc": "clone minimind仓库，pip install，运行推理测试",
+              "id": "1-1-2", "type": "read", "title": "对称 vs 非对称量化对比", "duration_min": 45,
+              "desc": "举例对比两种量化方法的数值范围和适用场景",
               "key_points": [
-                "git clone https://github.com/jingyaogong/minimind → pip install -r requirements.txt",
-                "运行 python inference.py 测试生成效果",
-                "观察model/config.py中的LMConfig: dim=512, n_layers=8, n_heads=16, vocab_size=6400",
-                "思考: 26M参数是怎么算出来的？(embedding + n_layers * (attention + ffn))"
+                "对称量化: Z=0, 范围[-S*2^(b-1), S*2^(b-1)]，简单但可能浪费bit",
+                "非对称量化: Z≠0, 范围可以不对称，灵活但多一个Z参数要存",
+                "什么时候用对称: 权重(大致对称分布)；什么时候用非对称: activation(ReLU后全是正数)",
+                "INT8对称: [-127, 127]；INT8非对称: [0, 255] 或 [-128, 127]"
+              ],
+              "resources": []
+            },
+            {
+              "id": "1-1-3", "type": "read", "title": "PTQ流程: 校准数据→统计分布→确定S和Z", "duration_min": 45,
+              "desc": "Post-Training Quantization的完整pipeline：用少量校准数据确定每层的量化参数",
+              "key_points": [
+                "PTQ流程: 原始模型 → 用校准数据前向传播 → 统计每层activation分布 → 计算S和Z → 量化部署",
+                "校准数据: 不需要训练数据那么多，几百个样本就够",
+                "为什么需要校准: 每层的数值范围不同，不能用统一的S和Z",
+                "FP32→INT8是最常见的PTQ路径，一般精度损失很小(<1%)"
+              ],
+              "resources": []
+            },
+            {
+              "id": "1-1-4", "type": "practice", "title": "实践: 手写均匀量化函数", "duration_min": 30,
+              "desc": "用PyTorch实现一个简单的均匀量化函数，对一个tensor做量化再反量化，观察误差",
+              "key_points": [
+                "def uniform_quantize(x, n_bits=8, symmetric=True): 计算S和Z，做量化",
+                "测试: 生成一个[-10, 10]的tensor，分别用4bit和8bit量化，对比反量化误差",
+                "观察: 4bit的误差明显大于8bit → bit数越少精度越低但存储越小",
+                "进阶: 画图展示原始分布 vs 量化后分布的重叠情况"
               ],
               "resources": [
-                {"name": "MiniMind GitHub 仓库", "url": "https://github.com/jingyaogong/minimind"},
-                {"name": "MiniMind model/model.py 核心实现", "url": "https://github.com/jingyaogong/minimind/blob/master/model/model.py"}
+                {"name": "PyTorch量化教程", "url": "https://pytorch.org/tutorials/advanced/static_quantization_tutorial.html"}
               ]
             },
             {
-              "id": "1-1-3", "type": "read", "title": "MiniMind项目README通读", "duration_min": 30,
-              "desc": "理解项目结构、训练流程全景图",
+              "id": "1-1-5", "type": "summary", "title": "笔记整理 + 手写量化公式3遍", "duration_min": 30,
+              "desc": "整理今天的量化数学笔记，手写核心公式加深记忆",
               "key_points": [
-                "训练流程: Pretrain → SFT → LoRA/DPO/RLHF — 每步的目标是什么？",
-                "数据格式: pretrain用t2t(text-to-text), sft用对话格式",
-                "模型架构公式: Transformer + RoPE + RMSNorm + SwiGLU + GQA",
-                "目录结构: model/目录放模型代码, scripts/放数据处理, train_*.py是训练入口"
+                "手写: 量化公式 q=round(r/S+Z) 和反量化公式 r_hat=S*(q-Z)",
+                "手写: 对称量化和非对称量化的S/Z计算",
+                "画图: PTQ流程图(模型→校准→统计→量化→部署)",
+                "用自己话写: 为什么量化有效？为什么误差可以接受？"
               ],
-              "resources": [
-                {"name": "MiniMind README", "url": "https://github.com/jingyaogong/minimind/blob/master/README.md"}
-              ]
-            }
-          ],
-          "algo": [
-            {"id": "1-1-a1", "type": "leetcode", "title": "LRU Cache (LC146)", "url": "https://leetcode.cn/problems/lru-cache/", "duration_min": 45}
-          ]
-        },
-        {
-          "day": 2,
-          "infra": [
-            {
-              "id": "1-2-1", "type": "practice", "title": "MiniMind模块实验: RMSNorm", "duration_min": 60,
-              "desc": "理解RMSNorm为什么替代LayerNorm",
-              "key_points": [
-                "RMSNorm公式: x * weight / sqrt(mean(x^2) + eps) — 比LayerNorm省去了减均值",
-                "看 model/model.py 中 RMSNorm 类的实现，只有~5行代码",
-                "实验: 打印RMSNorm前后tensor的分布变化",
-                "思考: 为什么LLaMA/MiniMind用Pre-Norm而不是Post-Norm？"
-              ],
-              "resources": [
-                {"name": "MiniMind model.py (RMSNorm实现)", "url": "https://github.com/jingyaogong/minimind/blob/master/model/model.py"},
-                {"name": "so-large-lm Transformer结构(含Norm讲解)", "url": "https://github.com/datawhalechina/so-large-lm/blob/main/docs/chapter2/1.transformer%E7%BB%93%E6%9E%84.md"}
-              ]
-            },
-            {
-              "id": "1-2-2", "type": "practice", "title": "MiniMind模块实验: RoPE位置编码", "duration_min": 60,
-              "desc": "理解旋转位置编码的数学直觉",
-              "key_points": [
-                "RoPE核心: 把位置信息编码为旋转矩阵，让attention分数自然包含相对位置",
-                "公式: f(q,m) = R(m)q, 其中R是旋转矩阵，m是位置",
-                "看 model/model.py 中 precompute_pos_cis() 和 apply_rotary_emb()",
-                "对比: 绝对位置编码(learned) vs RoPE vs ALiBi"
-              ],
-              "resources": [
-                {"name": "so-large-lm 位置编码专章", "url": "https://github.com/datawhalechina/so-large-lm/blob/main/docs/chapter2/3.%E4%BD%8D%E7%BD%AE%E7%BC%96%E7%A0%81.md"},
-                {"name": "baby-llama2 RoPE实现(最清晰)", "url": "https://github.com/DLLXW/baby-llama2-chinese/blob/main/model.py"},
-                {"name": "B站: RoPE旋转位置编码详解", "url": "https://www.bilibili.com/video/BV1fJ4m1u7qg"}
-              ]
-            },
-            {
-              "id": "1-2-3", "type": "read", "title": "MiniMind model.py 源码精读", "duration_min": 60,
-              "desc": "逐类理解完整的Transformer Decoder实现",
-              "key_points": [
-                "Attention类: GQA(Grouped Query Attention)的n_kv_heads < n_heads，共享KV",
-                "FeedForward类: SwiGLU — w2(silu(w1(x)) * w3(x))，比ReLU效果好",
-                "MiniMindBlock: PreNorm → Attention → Residual → PreNorm → FFN → Residual",
-                "MiniMindLM: Embedding → N * Block → RMSNorm → LM_Head(与Embedding共享权重)"
-              ],
-              "resources": [
-                {"name": "MiniMind model/model.py", "url": "https://github.com/jingyaogong/minimind/blob/master/model/model.py"},
-                {"name": "MiniMind model/config.py (参数配置)", "url": "https://github.com/jingyaogong/minimind/blob/master/model/config.py"}
-              ]
+              "resources": []
             }
           ],
           "algo": []
         },
         {
+          "day": 2,
+          "infra": [
+            {
+              "id": "1-2-1", "type": "read", "title": "三种校准方法对比: MinMax vs Percentile vs Entropy", "duration_min": 60,
+              "desc": "理解不同校准策略如何确定数值范围，以及各自的trade-off",
+              "key_points": [
+                "MinMax: 直接取min/max → 最简单但容易受outlier影响",
+                "Percentile: 取P99/P999范围内的值 → 鲁棒一些但丢掉了极端值的信息",
+                "Entropy(KL Divergence): 最优但最慢 → 让量化后的分布和原始分布的KL散度最小",
+                "实际选择: 大多数框架默认MinMax或Percentile，Entropy用在精度要求最高的场景"
+              ],
+              "resources": [
+                {"name": "TensorRT量化校准文档", "url": "https://docs.nvidia.com/deeplearning/tensorrt/latest/inference-library/quantization-in-tensorrt.html"}
+              ]
+            },
+            {
+              "id": "1-2-2", "type": "read", "title": "per-layer vs per-channel量化", "duration_min": 45,
+              "desc": "理解不同粒度的量化策略，为什么per-channel通常更好",
+              "key_points": [
+                "per-layer: 整层共享一个S和Z → 参数少但不同channel可能分布差异大",
+                "per-channel: 每个output channel有自己的S和Z → 更精确但参数多一些",
+                "为什么per-channel更好: 不同channel的数值范围可能差10倍，统一量化浪费精度",
+                "硬件限制: 有些硬件不支持per-channel，部署时需要注意"
+              ],
+              "resources": []
+            },
+            {
+              "id": "1-2-3", "type": "practice", "title": "实践: ResNet18动态量化对比", "duration_min": 45,
+              "desc": "用torch.quantization.quantize_dynamic对ResNet18做INT8量化，对比效果",
+              "key_points": [
+                "torch.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)",
+                "对比: 模型大小(FP32 vs INT8)、推理延迟、精度(top-1 accuracy)",
+                "观察: Linear层量化效果好，Conv层可能精度掉得多",
+                "思考: 为什么动态量化只对Linear层做？Conv层要怎么量化？"
+              ],
+              "resources": [
+                {"name": "PyTorch动态量化教程", "url": "https://pytorch.org/tutorials/advanced/dynamic_quantization_tutorial.html"}
+              ]
+            },
+            {
+              "id": "1-2-4", "type": "read", "title": "建立感性认识: 读一篇AWQ/GPTQ博客", "duration_min": 30,
+              "desc": "先不求甚解地读一篇LLM量化的博文，为后面的深入学习做铺垫",
+              "key_points": [
+                "目标: 建立LLM量化的大致印象，不求完全理解细节",
+                "关注: 为什么LLM量化比CNN难？什么是outlier？",
+                "记下: 不懂的地方，后面Day 3-5会深入学习",
+                "和lec02的联系: FP16/BF16/INT8的数值范围 → 量化的动机"
+              ],
+              "resources": [
+                {"name": "进击的Killua知乎量化系列", "url": "https://www.zhihu.com/people/zeroine-68/posts"}
+              ]
+            },
+            {
+              "id": "1-2-5", "type": "summary", "title": "笔记整理 lec05 + 推GitHub", "duration_min": 45,
+              "desc": "整理量化基础(Lec5)完整笔记，推送到sxvvv/notes/efficient-ml/lec05-quantization-I",
+              "key_points": [
+                "整理lec05笔记: 量化公式、对称/非对称、PTQ流程、校准方法、per-channel",
+                "补充代码示例: 自己实现的量化函数 + PyTorch动态量化结果",
+                "画图: 量化方法对比表 + 校准方法对比",
+                "推送: python study.py note quantization \"lec05-量化基础总结\""
+              ],
+              "resources": [
+                {"name": "你的lec02笔记格式参考", "url": "https://github.com/sxvvv/notes/tree/main/efficient-ml/lec02-basics"}
+              ]
+            }
+          ],
+          "algo": []
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "量化进阶 + LLM量化 (Lec6, Lec14)",
+      "days": [3, 5],
+      "tasks": [
+        {
           "day": 3,
           "infra": [
             {
-              "id": "1-3-1", "type": "practice", "title": "MiniMind模块实验: Attention机制", "duration_min": 60,
-              "desc": "深入理解QKV计算、mask和GQA",
+              "id": "2-1-1", "type": "read", "title": "STE(Straight-Through Estimator)原理", "duration_min": 60,
+              "desc": "理解QAT的核心技巧：为什么梯度能传过不可导的round函数",
               "key_points": [
-                "Attention计算步骤: Q=xWq, K=xWk, V=xWv → scores=QK^T/sqrt(dk) → mask → softmax → output=scores*V",
-                "Causal Mask: 下三角矩阵，让模型只能看到左边的token(自回归)",
-                "GQA: 8个Q头共享2个KV头(n_heads=8, n_kv_heads=2) → 减少KV cache内存",
-                "KV Cache: 推理时缓存已计算的K,V，新token只需计算增量"
+                "问题: round()不可导，梯度无法反向传播",
+                "STE解法: forward做量化(带round)，backward用identity(直通)",
+                "数学表述: ∂L/∂r ≈ ∂L/∂q (梯度直接透传，忽略量化误差)",
+                "直观理解: 把量化看成加了噪声，STE假设噪声对梯度影响可忽略"
               ],
               "resources": [
-                {"name": "MiniMind Attention实现", "url": "https://github.com/jingyaogong/minimind/blob/master/model/model.py"},
-                {"name": "so-large-lm Attention机制", "url": "https://github.com/datawhalechina/so-large-lm/blob/main/docs/chapter2/2.attention%E6%9C%BA%E5%88%B6.md"}
+                {"name": "Lec6 Slides: Quantization II", "url": "https://hanlab.mit.edu/courses/2024-fall-65940"}
               ]
             },
             {
-              "id": "1-3-2", "type": "read", "title": "MiniMind Tokenizer原理", "duration_min": 45,
-              "desc": "理解BPE分词算法和vocab构建",
+              "id": "2-1-2", "type": "read", "title": "QAT训练流程 vs PTQ对比", "duration_min": 45,
+              "desc": "对比量化感知训练和训练后量化的完整流程",
               "key_points": [
-                "BPE(Byte Pair Encoding): 从字符级开始，反复合并最频繁的相邻pair",
-                "MiniMind用vocab_size=6400的小词表(GPT-4用100k+)",
-                "看scripts/train_tokenizer.py: 如何从语料训练出tokenizer",
-                "encode('你好世界') → token_ids → 查vocab表验证"
+                "PTQ: 训练完→量化→部署，简单快速，精度可能掉",
+                "QAT: 训练时插入伪量化节点→模型适应量化→导出真量化模型",
+                "QAT流程: 插入FakeQuant→训练(前向量化/反向STE)→导出量化模型",
+                "什么时候用QAT: PTQ精度不满足要求时(比如低于某个accuracy threshold)"
               ],
-              "resources": [
-                {"name": "MiniMind train_tokenizer.py", "url": "https://github.com/jingyaogong/minimind/blob/master/scripts/train_tokenizer.py"}
-              ]
+              "resources": []
             },
             {
-              "id": "1-3-3", "type": "summary", "title": "Transformer核心组件总结", "duration_min": 45,
-              "desc": "用自己的话写清楚每个组件解决什么问题",
+              "id": "2-1-3", "type": "read", "title": "混合精度: HAWQ思路", "duration_min": 45,
+              "desc": "不同层用不同精度量化，自动搜索最优配置",
               "key_points": [
-                "RMSNorm → 解决: 训练不稳定(梯度消失/爆炸)，比LayerNorm计算更快",
-                "RoPE → 解决: 让模型理解token的相对位置，支持外推到更长序列",
-                "GQA → 解决: KV Cache内存过大，用更少的KV头节省显存",
-                "SwiGLU → 解决: FFN激活函数，比ReLU/GELU效果更好，但参数多33%",
-                "写成笔记推到GitHub: study note llm \"Day3-Transformer组件总结\""
+                "混合精度: 不是所有层都用INT8，敏感层用FP16，不敏感层用INT4",
+                "HAWQ: 用Hessian trace衡量每层对量化的敏感度 → 敏感度高用高精度",
+                "HAWQ-V3: 自动搜索每层的最优bit数，不需要人工指定",
+                "实践意义: 混合精度往往比统一精度好1-2%的accuracy"
+              ],
+              "resources": []
+            },
+            {
+              "id": "2-1-4", "type": "summary", "title": "笔记整理 lec06 核心公式 + 手写", "duration_min": 30,
+              "desc": "整理STE和QAT的核心公式，手写加深记忆",
+              "key_points": [
+                "手写: STE的forward和backward公式",
+                "手写: QAT vs PTQ的对比流程图",
+                "记录: 混合精度的核心思想(不是所有层都同等重要)"
               ],
               "resources": []
             }
           ],
-          "algo": [
-            {"id": "1-3-a1", "type": "leetcode", "title": "LFU Cache (LC460)", "url": "https://leetcode.cn/problems/lfu-cache/", "duration_min": 45}
-          ]
+          "algo": []
         },
         {
           "day": 4,
           "infra": [
-            {"id": "1-4-1", "type": "practice", "title": "MiniMind Pretrain: 下载数据+启动训练", "desc": "下载pretrain_t2t_mini.jsonl，运行train_pretrain.py", "duration_min": 90},
-            {"id": "1-4-2", "type": "read", "title": "train_pretrain.py 源码精读", "desc": "理解数据加载、loss计算、梯度更新流程", "duration_min": 60},
-            {"id": "1-4-3", "type": "read", "title": "CSAPP第9章: 虚拟内存(前半)", "desc": "理解虚拟地址空间、页表、TLB，为PagedAttention做铺垫", "duration_min": 30}
+            {
+              "id": "2-2-1", "type": "read", "title": "LLM量化的特殊困难: outlier问题", "duration_min": 45,
+              "desc": "理解为什么LLM比CNN更难量化：activation中存在极端outlier",
+              "key_points": [
+                "LLM的outlier: 某些channel的activation值比其他channel大100倍以上",
+                "为什么传统量化失败: MinMax被outlier拉大→大多数正常值被压缩到极少数量化级别",
+                "outlier集中在特定channel: 不仅是偶尔出现，而是固定在某些channel",
+                "这是LLM量化和CNN量化的根本区别"
+              ],
+              "resources": [
+                {"name": "Lec14 Slides: LLM Post-Training Quantization", "url": "https://hanlab.mit.edu/courses/2024-fall-65940"}
+              ]
+            },
+            {
+              "id": "2-2-2", "type": "read", "title": "LLM.int8(): 混合精度分解", "duration_min": 45,
+              "desc": "第一个解决LLM outlier量化问题的方法",
+              "key_points": [
+                "核心思路: 把矩阵乘法拆成两部分 → outlier列用FP16，其余用INT8",
+                "检测outlier: 如果某列的值>阈值(如6.0)，标记为outlier列",
+                "混合计算: outlier部分FP16矩阵乘 + 正常部分INT8矩阵乘 → 结果相加",
+                "代价: 额外的FP16计算 + 分解/合并的开销，但比全FP16还是快很多"
+              ],
+              "resources": [
+                {"name": "LLM.int8()论文", "url": "https://arxiv.org/abs/2208.07339"}
+              ]
+            },
+            {
+              "id": "2-2-3", "type": "read", "title": "SmoothQuant: activation outlier迁移到weight", "duration_min": 45,
+              "desc": "把activation的outlier数学迁移到weight上，让activation更容易量化",
+              "key_points": [
+                "核心公式: X·W = (X·diag(s)^{-1})·(diag(s)·W)，s是平滑因子",
+                "效果: activation被s缩小(outlier没那么突出了)，weight被s放大",
+                "为什么weight放大OK: weight是静态的，per-channel量化天然处理不同范围",
+                "s怎么算: s_j = max(|X_j|)^α / max(|W_j|)^(1-α)，α通常0.5"
+              ],
+              "resources": [
+                {"name": "SmoothQuant论文", "url": "https://arxiv.org/abs/2211.03854"}
+              ]
+            },
+            {
+              "id": "2-2-4", "type": "summary", "title": "笔记整理 + 手画outlier分布图", "duration_min": 30,
+              "desc": "画出LLM activation的outlier分布，以及各方法如何处理",
+              "key_points": [
+                "手画: LLM activation中outlier的分布图(正常值集中，少数channel极端大)",
+                "手画: LLM.int8()的分解计算流程",
+                "手画: SmoothQuant的迁移原理(X缩小+W放大)",
+                "对比表: 传统INT8 vs LLM.int8() vs SmoothQuant"
+              ],
+              "resources": []
+            }
           ],
           "algo": []
         },
         {
           "day": 5,
           "infra": [
-            {"id": "1-5-1", "type": "practice", "title": "MiniMind Pretrain训练完成+评估", "desc": "检查loss曲线，运行eval评估预训练效果", "duration_min": 60},
-            {"id": "1-5-2", "type": "read", "title": "预训练数据工程理解", "desc": "理解数据清洗、去重、配比策略，参考diy-llm数据工程章节", "duration_min": 60},
-            {"id": "1-5-3", "type": "read", "title": "CSAPP第9章: 虚拟内存(后半)", "desc": "理解分页机制、page fault、内存映射", "duration_min": 30}
+            {
+              "id": "2-3-1", "type": "read", "title": "AWQ核心: 保护salient weights", "duration_min": 60,
+              "desc": "AWQ的核心洞察：不是所有权重都同等重要，保护1%的salient channel就够了",
+              "key_points": [
+                "核心洞察: 观察activation分布，1%的channel包含了最重要的信息",
+                "salient weights: 对应高activation magnitude的权重channel",
+                "保护方式: 不直接剪掉，而是对这些channel乘以一个缩放因子再量化",
+                "α搜索: 自动找最优的per-channel缩放因子，让量化误差最小"
+              ],
+              "resources": [
+                {"name": "AWQ论文", "url": "https://arxiv.org/abs/2306.00978"},
+                {"name": "AutoAWQ GitHub", "url": "https://github.com/casper-hansen/AutoAWQ"}
+              ]
+            },
+            {
+              "id": "2-3-2", "type": "read", "title": "GPTQ: 基于Hessian的逐列量化", "duration_min": 60,
+              "desc": "GPTQ利用二阶信息(Hessian)逐列量化权重，最小化重构误差",
+              "key_points": [
+                "OBQ(Optimal Brain Quantization): 逐个权重量化，用Hessian计算最优顺序",
+                "GPTQ改进: 把逐个→逐列，利用Hessian的近似逆，一次量化一整列",
+                "Lazy Batch: 进一步优化，每次处理一批列，减少计算量",
+                "效果: 175B模型3-4bit量化，4小时内完成，精度接近FP16"
+              ],
+              "resources": [
+                {"name": "GPTQ论文", "url": "https://arxiv.org/abs/2210.17323"},
+                {"name": "Tim Dettmers博客", "url": "https://timdettmers.com/"}
+              ]
+            },
+            {
+              "id": "2-3-3", "type": "practice", "title": "实践: AutoAWQ量化Qwen2-1.5B到INT4", "duration_min": 30,
+              "desc": "动手量化一个小LLM，观察显存和推理速度的变化",
+              "key_points": [
+                "pip install autoawq → 加载Qwen2-1.5B → 量化到INT4",
+                "对比: FP16显存(~3GB) vs INT4显存(~1GB)，tokens/s变化",
+                "质量测试: 同一个prompt，对比量化前后的生成质量",
+                "思考: 1.5B量化有意义吗？什么大小的模型量化收益最大？"
+              ],
+              "resources": [
+                {"name": "AutoAWQ GitHub", "url": "https://github.com/casper-hansen/AutoAWQ"}
+              ]
+            },
+            {
+              "id": "2-3-4", "type": "summary", "title": "量化全景图整理 + 推GitHub", "duration_min": 45,
+              "desc": "画量化全景图(PTQ/QAT/LLM专用)，整理lec06+lec14笔记推送GitHub",
+              "key_points": [
+                "画量化全景图: PTQ(校准方法) → QAT(STE/混合精度) → LLM专用(LLM.int8/SmoothQuant/AWQ/GPTQ)",
+                "对比表: 各方法的适用场景、精度损失、计算成本",
+                "整理lec06和lec14笔记，保持和lec02/lec05一致的格式",
+                "推送: python study.py note quantization \"lec06+lec14-量化进阶总结\""
+              ],
+              "resources": []
+            }
           ],
-          "algo": [
-            {"id": "1-5-a1", "type": "leetcode", "title": "用队列实现栈 (LC225)", "url": "https://leetcode.cn/problems/implement-stack-using-queues/", "duration_min": 30}
-          ]
-        },
+          "algo": []
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "剪枝 (Lec3, Lec4)",
+      "days": [6, 7],
+      "tasks": [
         {
           "day": 6,
           "infra": [
-            {"id": "1-6-1", "type": "practice", "title": "MiniMind SFT: 指令微调训练", "desc": "下载sft_t2t_mini.jsonl，运行train_full_sft.py", "duration_min": 90},
-            {"id": "1-6-2", "type": "read", "title": "SFT数据格式与Chat Template理解", "desc": "理解对话模板、system/user/assistant角色、loss mask", "duration_min": 60}
+            {
+              "id": "3-1-1", "type": "read", "title": "剪枝直觉: 为什么|w|小的权重可以删", "duration_min": 45,
+              "desc": "理解剪枝的数学直觉：大部分权重接近0，删除它们对输出影响很小",
+              "key_points": [
+                "观察: 训练好的网络中，很多权重的绝对值接近0",
+                "直觉: |w|≈0的权重对输出贡献小，删掉它们→模型变小→推理更快",
+                "数学支撑: 删除权重w的误差∝|w|²(泰勒展开一阶近似)",
+                "但注意: |w|小≠不重要！这只是最简单的启发式"
+              ],
+              "resources": [
+                {"name": "Lec3 Slides: Pruning I", "url": "https://hanlab.mit.edu/courses/2024-fall-65940"}
+              ]
+            },
+            {
+              "id": "3-1-2", "type": "read", "title": "非结构化 vs 结构化剪枝 + 粒度层级", "duration_min": 45,
+              "desc": "理解不同剪枝粒度对加速效果的影响",
+              "key_points": [
+                "非结构化: 逐个权重删→产生稀疏矩阵→需要专门稀疏库/硬件才能加速",
+                "结构化: 删整个channel/filter/head→普通GPU就能直接加速",
+                "粒度层级: weight→neuron→channel→filter→layer→block",
+                "越粗粒度: 越容易加速，但越难保持精度(一次删太多)"
+              ],
+              "resources": []
+            },
+            {
+              "id": "3-1-3", "type": "read", "title": "Magnitude-based剪枝的问题和改进", "duration_min": 45,
+              "desc": "最简单的剪枝方法有什么问题？如何改进？",
+              "key_points": [
+                "Magnitude pruning: 删除|w|最小的k%权重，简单直接",
+                "问题1: 全局统一剪枝率不合理(有些层敏感有些不敏感)",
+                "问题2: 剪完需要重训练(fine-tune)恢复精度",
+                "改进: 逐层自适应剪枝率 + 剪枝后重训练 → 三步循环(训练→剪→微调)"
+              ],
+              "resources": []
+            },
+            {
+              "id": "3-1-4", "type": "summary", "title": "笔记整理 lec03", "duration_min": 30,
+              "desc": "整理剪枝基础笔记，手画剪枝粒度层级图",
+              "key_points": [
+                "手画: 剪枝粒度层级(weight→channel→filter→layer)",
+                "手画: 非结构化稀疏矩阵 vs 结构化剪枝后的稠密矩阵",
+                "写清: magnitude pruning的流程(训练→排序→剪枝→微调)"
+              ],
+              "resources": []
+            }
           ],
           "algo": []
         },
         {
           "day": 7,
           "infra": [
-            {"id": "1-7-1", "type": "practice", "title": "MiniMind SFT评估+对话测试", "desc": "加载SFT权重进行多轮对话，对比Pretrain效果", "duration_min": 60},
-            {"id": "1-7-2", "type": "read", "title": "train_full_sft.py 源码精读", "desc": "理解SFT和Pretrain在代码层面的区别", "duration_min": 60},
-            {"id": "1-7-3", "type": "summary", "title": "Pretrain vs SFT 对比总结", "desc": "写清楚:数据格式差异、loss计算差异、模型行为差异", "duration_min": 30}
+            {
+              "id": "3-2-1", "type": "read", "title": "Lottery Ticket Hypothesis + IMP", "duration_min": 60,
+              "desc": "理解中奖彩票假说：随机初始化的网络中存在一个可单独训练的稀疏子网络",
+              "key_points": [
+                "LTH核心: 随机初始化的网络中存在winning ticket(子网络)",
+                "IMP流程: 训练→剪枝→重置到初始权重→再训练→再剪枝(重复多次)",
+                "关键发现: IMP找到的子网络，从初始权重训练就能达到原网络精度",
+                "意义: 不需要先训练大网络再剪，理论上可以直接训练稀疏网络"
+              ],
+              "resources": [
+                {"name": "Lec4 Slides: Pruning II", "url": "https://hanlab.mit.edu/courses/2024-fall-65940"}
+              ]
+            },
+            {
+              "id": "3-2-2", "type": "read", "title": "SparseGPT: LLM一次剪枝不需重训练", "duration_min": 45,
+              "desc": "大模型剪枝的突破：不需要重训练就能剪到50%稀疏度",
+              "key_points": [
+                "问题: LLM重训练太贵了(几百小时GPU时间)",
+                "SparseGPT: 基于Hessian的闭式解，一次完成剪枝",
+                "核心: 逐层处理，用Hessian近似计算每个权重删除的影响",
+                "效果: 175B模型50%稀疏度，不需要任何重训练，精度损失很小"
+              ],
+              "resources": [
+                {"name": "SparseGPT论文", "url": "https://arxiv.org/abs/2301.00774"}
+              ]
+            },
+            {
+              "id": "3-2-3", "type": "read", "title": "Wanda: 用weight×activation判断重要性", "duration_min": 30,
+              "desc": "比SparseGPT更简单的方法：用权重和激活值的乘积决定剪谁",
+              "key_points": [
+                "Wanda核心: 重要性=|W|·|X|(权重绝对值×激活绝对值)",
+                "为什么比纯|W|好: 考虑了输入的影响，大权重遇到小激活→可能不重要",
+                "不需要Hessian: 计算简单得多，只需要少量校准数据跑一次前向",
+                "对比: 和SparseGPT精度相当但快很多"
+              ],
+              "resources": [
+                {"name": "Wanda论文", "url": "https://arxiv.org/abs/2310.08119"}
+              ]
+            },
+            {
+              "id": "3-2-4", "type": "practice", "title": "实践: PyTorch pruning tutorial", "duration_min": 30,
+              "desc": "用torch.nn.utils.prune对ResNet18做L1 unstructured pruning",
+              "key_points": [
+                "torch.nn.utils.prune.l1_unstructured(module, 'weight', amount=0.3)",
+                "画图: x轴=稀疏度(0%→80%)，y轴=精度",
+                "观察: 什么稀疏度下精度开始明显下降？",
+                "思考: 为什么50%稀疏度下精度几乎不变？"
+              ],
+              "resources": [
+                {"name": "PyTorch Pruning教程", "url": "https://pytorch.org/tutorials/advanced/pruning_tutorial.html"}
+              ]
+            },
+            {
+              "id": "3-2-5", "type": "summary", "title": "笔记整理 lec03-04 + 推GitHub", "duration_min": 30,
+              "desc": "整理剪枝笔记，推送到sxvvv/notes/efficient-ml/lec03-pruning-I",
+              "key_points": [
+                "整理lec03-04: 基础剪枝→LTH→SparseGPT→Wanda",
+                "画图: 剪枝方法演进路线( magnitude→IMP→LLM剪枝)",
+                "推送: python study.py note pruning \"lec03-04-剪枝总结\""
+              ],
+              "resources": []
+            }
           ],
-          "algo": [
-            {"id": "1-7-a1", "type": "leetcode", "title": "前K个高频元素 (LC347)", "url": "https://leetcode.cn/problems/top-k-frequent-elements/", "duration_min": 40}
-          ]
-        },
+          "algo": []
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "NAS (Lec7, Lec8)",
+      "days": [8, 9],
+      "tasks": [
         {
           "day": 8,
           "infra": [
-            {"id": "1-8-1", "type": "read", "title": "LoRA原理精读", "desc": "理解低秩分解思想、为什么只调QV、rank选择", "duration_min": 60},
-            {"id": "1-8-2", "type": "practice", "title": "MiniMind LoRA微调训练", "desc": "运行train_lora.py，对比全参数微调", "duration_min": 90}
+            {
+              "id": "4-1-1", "type": "read", "title": "NAS三要素: 搜索空间+搜索策略+评估策略", "duration_min": 45,
+              "desc": "理解Neural Architecture Search的设计空间",
+              "key_points": [
+                "搜索空间: 链式(chain) vs 模块化(cell-based) vs 层级(hierarchical)",
+                "搜索策略: random → evolutionary → RL → differentiable",
+                "评估策略: 从头训练(贵) → weight sharing(便宜) → proxy(代理)",
+                "NAS的终极目标: 自动找到最优网络结构，替代人工设计"
+              ],
+              "resources": [
+                {"name": "Lec7 Slides: NAS I", "url": "https://hanlab.mit.edu/courses/2024-fall-65940"}
+              ]
+            },
+            {
+              "id": "4-1-2", "type": "read", "title": "DARTS核心: 离散→连续的softmax技巧", "duration_min": 60,
+              "desc": "理解可微分NAS的突破性思路：用softmax把离散选择变成可优化的连续空间",
+              "key_points": [
+                "问题: 网络结构是离散选择(用conv3x3还是conv5x5?)，无法梯度优化",
+                "DARTS解法: 对每个选择赋权重α，用softmax加权: output = Σ softmax(α_i) · op_i(x)",
+                "优化: 同时优化网络权重w和结构参数α (bilevel optimization)",
+                "效果: 搜索成本从几千GPU天降到几个GPU天"
+              ],
+              "resources": []
+            },
+            {
+              "id": "4-1-3", "type": "read", "title": "Once-for-All: 训一个supernet提取子网络", "duration_min": 30,
+              "desc": "训练一次大网络，按需提取不同大小的子网络",
+              "key_points": [
+                "核心思想: 训练一个大而全的supernet，从中提取满足不同约束的子网络",
+                "渐进式收缩: 先训大网络→逐步变小(宽度/深度/核大小)",
+                "好处: 不需要为每个目标设备重新搜索，一次训练多次部署",
+                "和MCUNet的关系: MCUNet用OFA在MCU上找到可运行的子网络"
+              ],
+              "resources": []
+            },
+            {
+              "id": "4-1-4", "type": "summary", "title": "笔记整理 lec07", "duration_min": 30,
+              "desc": "整理NAS基础笔记",
+              "key_points": [
+                "画图: NAS三要素关系图",
+                "手写: DARTS的softmax公式和bilevel optimization目标",
+                "对比: 各搜索策略的优缺点(成本/效果/可微分性)"
+              ],
+              "resources": []
+            }
           ],
           "algo": []
         },
         {
           "day": 9,
           "infra": [
-            {"id": "1-9-1", "type": "read", "title": "DPO论文精读", "desc": "理解DPO如何绕过Reward Model直接优化策略", "duration_min": 90},
-            {"id": "1-9-2", "type": "practice", "title": "MiniMind DPO训练", "desc": "运行train_dpo.py，理解preference数据格式", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "1-9-a1", "type": "leetcode", "title": "数据流的中位数 (LC295)", "url": "https://leetcode.cn/problems/find-median-from-data-stream/", "duration_min": 45}
-          ]
-        },
-        {
-          "day": 10,
-          "infra": [
-            {"id": "1-10-1", "type": "read", "title": "InstructGPT/RLHF论文精读", "desc": "理解PPO在LLM中的应用:SFT→RM→PPO三阶段", "duration_min": 90},
-            {"id": "1-10-2", "type": "read", "title": "DeepSeek-R1技术报告精读", "desc": "重点理解GRPO算法:如何去掉Critic模型", "duration_min": 90}
-          ],
-          "algo": []
-        },
-        {
-          "day": 11,
-          "infra": [
-            {"id": "1-11-1", "type": "practice", "title": "MiniMind PPO训练", "desc": "运行train_ppo.py，观察reward曲线变化", "duration_min": 90},
-            {"id": "1-11-2", "type": "read", "title": "train_ppo.py 源码精读", "desc": "理解Actor/Critic更新逻辑、GAE计算", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "1-11-a1", "type": "leetcode", "title": "合并K个升序链表 (LC23)", "url": "https://leetcode.cn/problems/merge-k-sorted-lists/", "duration_min": 40}
-          ]
-        },
-        {
-          "day": 12,
-          "infra": [
-            {"id": "1-12-1", "type": "practice", "title": "MiniMind GRPO训练", "desc": "运行train_grpo.py，对比PPO效果和训练稳定性", "duration_min": 90},
-            {"id": "1-12-2", "type": "summary", "title": "PPO vs DPO vs GRPO对比总结", "desc": "写清楚三者的优劣、适用场景、计算开销差异", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 13,
-          "infra": [
-            {"id": "1-13-1", "type": "read", "title": "MiniMind-V架构理解", "desc": "阅读README，理解CLIP视觉编码器+线性投影+LLM架构", "duration_min": 60},
-            {"id": "1-13-2", "type": "practice", "title": "MiniMind-V环境搭建+推理测试", "desc": "clone minimind-v仓库，跑通图片描述推理", "duration_min": 60},
-            {"id": "1-13-3", "type": "read", "title": "vision_utils.py 源码精读", "desc": "理解CLIP特征提取和50个visual token的生成过程", "duration_min": 45}
-          ],
-          "algo": [
-            {"id": "1-13-a1", "type": "leetcode", "title": "实现Trie前缀树 (LC208)", "url": "https://leetcode.cn/problems/implement-trie-prefix-tree/", "duration_min": 40}
-          ]
-        },
-        {
-          "day": 14,
-          "infra": [
-            {"id": "1-14-1", "type": "practice", "title": "MiniMind-V训练: 视觉-语言对齐", "desc": "运行VLM训练脚本，理解图文对齐微调流程", "duration_min": 120},
-            {"id": "1-14-2", "type": "read", "title": "MiniMind MoE结构理解", "desc": "阅读MoE相关代码，理解Expert路由和负载均衡loss", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 15,
-          "infra": [
-            {"id": "1-15-1", "type": "summary", "title": "第一层通关总结", "desc": "画出LLM全流程图:Pretrain→SFT→LoRA→DPO/PPO/GRPO，标注数据流", "duration_min": 60},
-            {"id": "1-15-2", "type": "practice", "title": "MiniMind DDP多卡训练(可选)", "desc": "如有多卡，尝试torchrun启动DDP训练", "duration_min": 60},
-            {"id": "1-15-3", "type": "summary", "title": "知识梳理:Dense vs MoE vs VLM", "desc": "用自己的话讲清三种架构的区别和适用场景", "duration_min": 30}
-          ],
-          "algo": [
-            {"id": "1-15-a1", "type": "leetcode", "title": "键值映射 (LC677)", "url": "https://leetcode.cn/problems/map-sum-pairs/", "duration_min": 30}
-          ]
-        }
-      ]
-    },
-    {
-      "id": 2,
-      "name": "GPU编程 CUDA/Triton",
-      "days": [16, 27],
-      "tasks": [
-        {
-          "day": 16,
-          "infra": [
-            {"id": "2-1-1", "type": "read", "title": "GPU硬件架构入门", "desc": "阅读GPU编程入门手册，理解SM/Warp/Thread层次", "duration_min": 90},
-            {"id": "2-1-2", "type": "practice", "title": "CUDA Hello World: vector_add", "desc": "写第一个CUDA kernel:向量加法，理解<<<grid,block>>>", "duration_min": 60},
-            {"id": "2-1-3", "type": "read", "title": "CSAPP第5章: 程序优化(前半)", "desc": "理解循环展开、流水线、分支预测基础", "duration_min": 30}
-          ],
-          "algo": []
-        },
-        {
-          "day": 17,
-          "infra": [
-            {"id": "2-2-1", "type": "practice", "title": "CUDA: reduce求和kernel", "desc": "实现parallel reduction，理解warp级同步", "duration_min": 90},
-            {"id": "2-2-2", "type": "read", "title": "CUDA内存模型", "desc": "理解global/shared/register/constant memory层次", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "2-2-a1", "type": "leetcode", "title": "二分查找 (LC704)", "url": "https://leetcode.cn/problems/binary-search/", "duration_min": 20}
-          ]
-        },
-        {
-          "day": 18,
-          "infra": [
-            {"id": "2-3-1", "type": "practice", "title": "CUDA: 矩阵乘法(naive版)", "desc": "实现naive GEMM kernel，benchmark vs cuBLAS", "duration_min": 90},
-            {"id": "2-3-2", "type": "practice", "title": "CUDA: 矩阵乘法(共享内存tiling)", "desc": "用shared memory做tiling优化，对比性能提升", "duration_min": 90}
-          ],
-          "algo": []
-        },
-        {
-          "day": 19,
-          "infra": [
-            {"id": "2-4-1", "type": "read", "title": "CSAPP第6章: 存储器层次结构", "desc": "理解cache line、局部性原理、cache miss", "duration_min": 60},
-            {"id": "2-4-2", "type": "practice", "title": "CUDA: Softmax kernel", "desc": "实现numerically stable softmax，理解online算法", "duration_min": 90}
-          ],
-          "algo": [
-            {"id": "2-4-a1", "type": "leetcode", "title": "搜索旋转排序数组 (LC33)", "url": "https://leetcode.cn/problems/search-in-rotated-sorted-array/", "duration_min": 40}
-          ]
-        },
-        {
-          "day": 20,
-          "infra": [
-            {"id": "2-5-1", "type": "read", "title": "Roofline Model理解", "desc": "学会计算算术强度，判断kernel是compute-bound还是memory-bound", "duration_min": 60},
-            {"id": "2-5-2", "type": "practice", "title": "nsight/ncu profiling入门", "desc": "用NVIDIA profiler分析自己写的kernel瓶颈", "duration_min": 90}
-          ],
-          "algo": []
-        },
-        {
-          "day": 21,
-          "infra": [
-            {"id": "2-6-1", "type": "read", "title": "Triton编程模型入门", "desc": "理解Triton vs CUDA:block-level编程、auto-tuning", "duration_min": 60},
-            {"id": "2-6-2", "type": "practice", "title": "Triton Tutorial 01: Vector Add", "desc": "跑通Triton官方第一个tutorial", "duration_min": 45},
-            {"id": "2-6-3", "type": "practice", "title": "Triton Tutorial 02: Fused Softmax", "desc": "跑通fused softmax，理解为什么fusion重要", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "2-6-a1", "type": "leetcode", "title": "在排序数组中查找元素 (LC34)", "url": "https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/", "duration_min": 30}
-          ]
-        },
-        {
-          "day": 22,
-          "infra": [
-            {"id": "2-7-1", "type": "practice", "title": "Triton Tutorial 03: MatMul", "desc": "跑通矩阵乘法tutorial，理解tiling在Triton中的表达", "duration_min": 90},
-            {"id": "2-7-2", "type": "practice", "title": "Triton Tutorial 04: LayerNorm", "desc": "跑通LayerNorm tutorial", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 23,
-          "infra": [
-            {"id": "2-8-1", "type": "practice", "title": "Triton Puzzles刷题 (1-5)", "desc": "完成srush/Triton-Puzzles前5题", "duration_min": 120},
-            {"id": "2-8-2", "type": "read", "title": "LeetCUDA: 浏览kernel实现列表", "desc": "了解200+kernel的分类，选3个感兴趣的读源码", "duration_min": 30}
-          ],
-          "algo": [
-            {"id": "2-8-a1", "type": "leetcode", "title": "课程表(拓扑排序) (LC207)", "url": "https://leetcode.cn/problems/course-schedule/", "duration_min": 40}
-          ]
-        },
-        {
-          "day": 24,
-          "infra": [
-            {"id": "2-9-1", "type": "practice", "title": "Triton Puzzles刷题 (6-10)", "desc": "完成Triton-Puzzles第6-10题", "duration_min": 120},
-            {"id": "2-9-2", "type": "read", "title": "FlashAttention论文快速理解", "desc": "理解tiling + recomputation思想，不需要看证明", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 25,
-          "infra": [
-            {"id": "2-10-1", "type": "practice", "title": "Triton Puzzles刷题 (11-13)", "desc": "完成Triton-Puzzles最后3题", "duration_min": 90},
-            {"id": "2-10-2", "type": "practice", "title": "Triton Tutorial 06: Fused Attention", "desc": "跑通官方FlashAttention tutorial", "duration_min": 90}
-          ],
-          "algo": [
-            {"id": "2-10-a1", "type": "leetcode", "title": "课程表II (LC210)", "url": "https://leetcode.cn/problems/course-schedule-ii/", "duration_min": 40}
-          ]
-        },
-        {
-          "day": 26,
-          "infra": [
-            {"id": "2-11-1", "type": "practice", "title": "用Triton写Fused RMSNorm", "desc": "自己从零写一个RMSNorm kernel，benchmark vs PyTorch", "duration_min": 120},
-            {"id": "2-11-2", "type": "read", "title": "Liger-Kernel源码浏览", "desc": "看LinkedIn开源的生产级Triton kernel写法", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 27,
-          "infra": [
-            {"id": "2-12-1", "type": "summary", "title": "第二层通关总结", "desc": "整理:CUDA vs Triton对比、tiling原理、memory hierarchy图", "duration_min": 60},
-            {"id": "2-12-2", "type": "practice", "title": "自写kernel性能报告", "desc": "把自己写的RMSNorm kernel做完整benchmark报告", "duration_min": 60},
-            {"id": "2-12-3", "type": "read", "title": "FlashAttention-2论文", "desc": "理解FA2相比FA1的改进:减少non-matmul计算", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "2-12-a1", "type": "leetcode", "title": "生产者消费者模式(多线程设计)", "url": "https://leetcode.cn/problems/design-bounded-blocking-queue/", "duration_min": 40}
-          ]
-        }
-      ]
-    },
-    {
-      "id": 3,
-      "name": "推理引擎",
-      "days": [28, 45],
-      "tasks": [
-        {
-          "day": 28,
-          "infra": [
-            {"id": "3-1-1", "type": "read", "title": "PagedAttention论文精读", "desc": "理解KV cache碎片问题 → 虚拟内存类比 → block分页方案", "duration_min": 120},
-            {"id": "3-1-2", "type": "read", "title": "OS分页机制回顾+类比", "desc": "画出OS虚拟内存 vs PagedAttention的对照图", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 29,
-          "infra": [
-            {"id": "3-2-1", "type": "read", "title": "Continuous Batching原理", "desc": "阅读Orca论文或Anyscale博客，理解iteration-level调度", "duration_min": 60},
-            {"id": "3-2-2", "type": "read", "title": "Prefill vs Decode阶段理解", "desc": "理解compute-bound vs memory-bound的本质差异", "duration_min": 45},
-            {"id": "3-2-3", "type": "practice", "title": "nano-vllm环境搭建", "desc": "clone GeeeekExplorer/nano-vllm，pip install，跑通example", "duration_min": 45}
-          ],
-          "algo": [
-            {"id": "3-2-a1", "type": "leetcode", "title": "任务调度器 (LC621)", "url": "https://leetcode.cn/problems/task-scheduler/", "duration_min": 40}
-          ]
-        },
-        {
-          "day": 30,
-          "infra": [
-            {"id": "3-3-1", "type": "read", "title": "nano-vllm: config.py + cache.py", "desc": "理解KV cache的数据结构和block定义", "duration_min": 90},
-            {"id": "3-3-2", "type": "read", "title": "nano-vllm: block.py + block_manager.py", "desc": "理解block分配/释放逻辑，对照OS buddy system", "duration_min": 90}
-          ],
-          "algo": []
-        },
-        {
-          "day": 31,
-          "infra": [
-            {"id": "3-4-1", "type": "read", "title": "nano-vllm: sequence.py + scheduler.py", "desc": "理解请求状态机(waiting→running→finished)和调度策略", "duration_min": 90},
-            {"id": "3-4-2", "type": "read", "title": "nano-vllm: engine.py", "desc": "理解step循环:schedule→execute→process_output", "duration_min": 90}
-          ],
-          "algo": [
-            {"id": "3-4-a1", "type": "leetcode", "title": "设计推特 (LC355)", "url": "https://leetcode.cn/problems/design-twitter/", "duration_min": 40}
-          ]
-        },
-        {
-          "day": 32,
-          "infra": [
-            {"id": "3-5-1", "type": "read", "title": "nano-vllm: paged_attention.py", "desc": "理解PagedAttention kernel的实现细节", "duration_min": 90},
-            {"id": "3-5-2", "type": "practice", "title": "nano-vllm: 修改调度策略实验", "desc": "尝试修改scheduler的优先级逻辑，观察吞吐变化", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 33,
-          "infra": [
-            {"id": "3-6-1", "type": "practice", "title": "mini-vllm源码阅读", "desc": "读ubermenchh/mini-vllm，对比nano-vllm的设计差异", "duration_min": 90},
-            {"id": "3-6-2", "type": "summary", "title": "nano-vllm架构图绘制", "desc": "画出完整数据流:request→scheduler→model→output", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "3-6-a1", "type": "leetcode", "title": "最小区间 (LC632)", "url": "https://leetcode.cn/problems/smallest-range-covering-elements-from-k-lists/", "duration_min": 45}
-          ]
-        },
-        {
-          "day": 34,
-          "infra": [
-            {"id": "3-7-1", "type": "read", "title": "MinivLLM: 自实现PagedAttention CUDA", "desc": "读Wenyueh/MinivLLM的CUDA kernel实现", "duration_min": 90},
-            {"id": "3-7-2", "type": "read", "title": "MinivLLM: HowToApproachvLLM.md", "desc": "跟着step-by-step指南理解vLLM实现思路", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 35,
-          "infra": [
-            {"id": "3-8-1", "type": "practice", "title": "vLLM安装+部署一个7B模型", "desc": "pip install vllm，部署Qwen2-7B并测试推理", "duration_min": 60},
-            {"id": "3-8-2", "type": "practice", "title": "vLLM benchmark: 吞吐量测试", "desc": "用benchmark_serving.py测试不同并发下的吞吐量", "duration_min": 60},
-            {"id": "3-8-3", "type": "read", "title": "vLLM V1架构概览博客", "desc": "阅读shijuzhao.github.io/vllm-v1，理解V1三段式架构", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "3-8-a1", "type": "leetcode", "title": "设计哈希映射 (LC706)", "url": "https://leetcode.cn/problems/design-hashmap/", "duration_min": 30}
-          ]
-        },
-        {
-          "day": 36,
-          "infra": [
-            {"id": "3-9-1", "type": "read", "title": "vLLM V1: processor模块", "desc": "阅读v1/engine/processor.py，理解请求预处理", "duration_min": 90},
-            {"id": "3-9-2", "type": "read", "title": "vLLM V1: engine_core模块", "desc": "阅读v1/engine/engine_core.py，理解核心step循环", "duration_min": 90}
-          ],
-          "algo": []
-        },
-        {
-          "day": 37,
-          "infra": [
-            {"id": "3-10-1", "type": "read", "title": "vLLM V1: scheduler源码", "desc": "精读scheduler.py，理解waiting/running/swapped队列调度", "duration_min": 120},
-            {"id": "3-10-2", "type": "read", "title": "vLLM V1: block_manager源码", "desc": "精读block_manager.py，理解物理/逻辑block映射", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "3-10-a1", "type": "leetcode", "title": "设计循环队列 (LC622)", "url": "https://leetcode.cn/problems/design-circular-queue/", "duration_min": 30}
-          ]
-        },
-        {
-          "day": 38,
-          "infra": [
-            {"id": "3-11-1", "type": "read", "title": "vLLM V1: output_processor模块", "desc": "理解token解码和结果组装", "duration_min": 60},
-            {"id": "3-11-2", "type": "read", "title": "vLLM: model_runner源码", "desc": "理解模型执行流程、CUDA Graph应用", "duration_min": 90}
-          ],
-          "algo": []
-        },
-        {
-          "day": 39,
-          "infra": [
-            {"id": "3-12-1", "type": "read", "title": "vLLM Prefix Caching理解", "desc": "理解prefix block复用和RadixAttention对比", "duration_min": 60},
-            {"id": "3-12-2", "type": "read", "title": "SGLang论文快速阅读", "desc": "理解RadixAttention思路，和vLLM prefix caching对比", "duration_min": 60},
-            {"id": "3-12-3", "type": "read", "title": "vLLM中文文档浏览", "desc": "通过vllm-cn快速查阅配置参数含义", "duration_min": 30}
-          ],
-          "algo": [
-            {"id": "3-12-a1", "type": "leetcode", "title": "分割等和子集(DP) (LC416)", "url": "https://leetcode.cn/problems/partition-equal-subset-sum/", "duration_min": 40}
-          ]
-        },
-        {
-          "day": 40,
-          "infra": [
-            {"id": "3-13-1", "type": "read", "title": "FlashAttention-2源码入口阅读", "desc": "理解FA2的Python接口和CUDA kernel入口", "duration_min": 90},
-            {"id": "3-13-2", "type": "read", "title": "FlashAttention tiling图解", "desc": "画出Q/K/V的tiling分块示意图和内存访问模式", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 41,
-          "infra": [
-            {"id": "3-14-1", "type": "read", "title": "FlashAttention forward pass理解", "desc": "理解online softmax + tiled matmul的融合", "duration_min": 90},
-            {"id": "3-14-2", "type": "read", "title": "FlashAttention backward pass理解", "desc": "理解recomputation如何节省显存", "duration_min": 90}
-          ],
-          "algo": [
-            {"id": "3-14-a1", "type": "leetcode", "title": "零钱兑换(DP) (LC322)", "url": "https://leetcode.cn/problems/coin-change/", "duration_min": 40}
-          ]
-        },
-        {
-          "day": 42,
-          "infra": [
-            {"id": "3-15-1", "type": "practice", "title": "FlashAttention benchmark实验", "desc": "对比FA2 vs standard attention的速度和显存", "duration_min": 60},
-            {"id": "3-15-2", "type": "read", "title": "Speculative Decoding原理", "desc": "理解draft-verify范式，小模型猜+大模型验", "duration_min": 60},
-            {"id": "3-15-3", "type": "read", "title": "Chunked Prefill理解", "desc": "理解为什么要把长prompt切chunk处理", "duration_min": 45}
-          ],
-          "algo": []
-        },
-        {
-          "day": 43,
-          "infra": [
-            {"id": "3-16-1", "type": "practice", "title": "vLLM高级功能实验", "desc": "测试TP多卡推理、量化(AWQ/GPTQ)模式", "duration_min": 90},
-            {"id": "3-16-2", "type": "read", "title": "量化基础: INT8/INT4/FP8", "desc": "理解对称/非对称量化、per-channel/per-token粒度", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "3-16-a1", "type": "leetcode", "title": "最长递增子序列(DP) (LC300)", "url": "https://leetcode.cn/problems/longest-increasing-subsequence/", "duration_min": 40}
-          ]
-        },
-        {
-          "day": 44,
-          "infra": [
-            {"id": "3-17-1", "type": "read", "title": "AWQ量化论文", "desc": "理解activation-aware的salient weight保护思路", "duration_min": 90},
-            {"id": "3-17-2", "type": "practice", "title": "vLLM AWQ量化模型部署", "desc": "下载AWQ量化模型并部署，对比FP16性能", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 45,
-          "infra": [
-            {"id": "3-18-1", "type": "summary", "title": "第三层通关总结", "desc": "画出vLLM完整架构图+写一份推理优化技术综述", "duration_min": 90},
-            {"id": "3-18-2", "type": "practice", "title": "推理引擎benchmark报告", "desc": "不同batch/序列长度/量化下的性能对比报告", "duration_min": 90}
-          ],
-          "algo": [
-            {"id": "3-18-a1", "type": "leetcode", "title": "单词拆分(DP) (LC139)", "url": "https://leetcode.cn/problems/word-break/", "duration_min": 40}
-          ]
-        }
-      ]
-    },
-    {
-      "id": 4,
-      "name": "自制推理框架",
-      "days": [46, 58],
-      "tasks": [
-        {
-          "day": 46,
-          "infra": [
-            {"id": "4-1-1", "type": "read", "title": "llama2.c 源码通读", "desc": "karpathy的700行C推理代码，理解最简LLM推理流程", "duration_min": 90},
-            {"id": "4-1-2", "type": "practice", "title": "编译运行llama2.c", "desc": "编译并运行，对比Python推理速度", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 47,
-          "infra": [
-            {"id": "4-2-1", "type": "read", "title": "llm.c: GPT-2训练源码", "desc": "karpathy的纯C/CUDA GPT-2训练，理解底层实现", "duration_min": 120},
-            {"id": "4-2-2", "type": "practice", "title": "llm.c编译运行", "desc": "编译CUDA版本，在GPU上跑通训练", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "4-2-a1", "type": "leetcode", "title": "编辑距离(DP) (LC72)", "url": "https://leetcode.cn/problems/edit-distance/", "duration_min": 45}
-          ]
-        },
-        {
-          "day": 48,
-          "infra": [
-            {"id": "4-3-1", "type": "read", "title": "KuiperLLama项目结构理解", "desc": "阅读README和目录结构，理解C++推理框架分层", "duration_min": 60},
-            {"id": "4-3-2", "type": "practice", "title": "KuiperLLama环境搭建", "desc": "cmake编译，跑通基本推理", "duration_min": 90}
-          ],
-          "algo": []
-        },
-        {
-          "day": 49,
-          "infra": [
-            {"id": "4-4-1", "type": "read", "title": "KuiperLLama: Tensor和Buffer管理", "desc": "理解C++中的Tensor抽象和内存管理", "duration_min": 90},
-            {"id": "4-4-2", "type": "read", "title": "KuiperLLama: 算子实现层", "desc": "理解MatMul/RMSNorm/RoPE的C++实现", "duration_min": 90}
-          ],
-          "algo": [
-            {"id": "4-4-a1", "type": "leetcode", "title": "矩阵中的最长递增路径 (LC329)", "url": "https://leetcode.cn/problems/longest-increasing-path-in-a-matrix/", "duration_min": 45}
-          ]
-        },
-        {
-          "day": 50,
-          "infra": [
-            {"id": "4-5-1", "type": "read", "title": "KuiperLLama: 模型加载和权重映射", "desc": "理解模型文件解析、权重到算子的绑定", "duration_min": 90},
-            {"id": "4-5-2", "type": "read", "title": "KuiperLLama: KV Cache实现", "desc": "理解C++版本的KV cache管理", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 51,
-          "infra": [
-            {"id": "4-6-1", "type": "read", "title": "KuiperLLama: 推理主循环", "desc": "理解prefill→decode循环、token采样", "duration_min": 90},
-            {"id": "4-6-2", "type": "practice", "title": "KuiperLLama: 添加新模型支持", "desc": "尝试适配一个新模型(如小规模Qwen)", "duration_min": 90}
-          ],
-          "algo": [
-            {"id": "4-6-a1", "type": "leetcode", "title": "有效的数独 (LC36)", "url": "https://leetcode.cn/problems/valid-sudoku/", "duration_min": 30}
-          ]
-        },
-        {
-          "day": 52,
-          "infra": [
-            {"id": "4-7-1", "type": "read", "title": "llama.cpp: GGUF格式理解", "desc": "理解GGUF文件结构和量化格式(Q4_K_M等)", "duration_min": 90},
-            {"id": "4-7-2", "type": "practice", "title": "llama.cpp: 量化+推理实验", "desc": "把一个HF模型转GGUF并跑推理", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 53,
-          "infra": [
-            {"id": "4-8-1", "type": "read", "title": "TensorRT-LLM入门", "desc": "了解graph optimization、layer fusion概念", "duration_min": 90},
-            {"id": "4-8-2", "type": "practice", "title": "TensorRT-LLM编译部署实验", "desc": "用TRT-LLM部署一个模型，对比vLLM性能", "duration_min": 90}
-          ],
-          "algo": [
-            {"id": "4-8-a1", "type": "leetcode", "title": "岛屿数量(BFS/DFS) (LC200)", "url": "https://leetcode.cn/problems/number-of-islands/", "duration_min": 30}
-          ]
-        },
-        {
-          "day": 54,
-          "infra": [
-            {"id": "4-9-1", "type": "practice", "title": "推理框架横评", "desc": "同一模型在vLLM/TRT-LLM/llama.cpp下的性能对比", "duration_min": 120},
-            {"id": "4-9-2", "type": "summary", "title": "推理框架对比报告", "desc": "写出各框架的优劣势、适用场景", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 55,
-          "infra": [
-            {"id": "4-10-1", "type": "read", "title": "Speculative Decoding深入", "desc": "读Medusa/Eagle等变体论文，理解不同speculation策略", "duration_min": 90},
-            {"id": "4-10-2", "type": "practice", "title": "vLLM Speculative Decoding实验", "desc": "配置spec_decoding参数测试效果", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "4-10-a1", "type": "leetcode", "title": "克隆图 (LC133)", "url": "https://leetcode.cn/problems/clone-graph/", "duration_min": 30}
-          ]
-        },
-        {
-          "day": 56,
-          "infra": [
-            {"id": "4-11-1", "type": "read", "title": "MLC-LLM: 编译优化方案", "desc": "理解TVM编译栈如何做跨硬件推理优化", "duration_min": 90},
-            {"id": "4-11-2", "type": "practice", "title": "MLC-LLM部署实验", "desc": "用MLC-LLM部署一个小模型", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 57,
-          "infra": [
-            {"id": "4-12-1", "type": "read", "title": "FlashAttention-3(Hopper)了解", "desc": "理解H100异步执行+FP8优化", "duration_min": 60},
-            {"id": "4-12-2", "type": "read", "title": "FlashInfer库浏览", "desc": "了解另一个高性能attention kernel库", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "4-12-a1", "type": "leetcode", "title": "接雨水 (LC42)", "url": "https://leetcode.cn/problems/trapping-rain-water/", "duration_min": 40}
-          ]
-        },
-        {
-          "day": 58,
-          "infra": [
-            {"id": "4-13-1", "type": "summary", "title": "第四层通关总结", "desc": "整理推理框架全景图:模型加载→算子计算→KV管理→调度→输出", "duration_min": 60},
-            {"id": "4-13-2", "type": "summary", "title": "简历项目整理", "desc": "把KuiperLLama/自写kernel经验整理为简历项目描述", "duration_min": 60}
+            {
+              "id": "4-2-1", "type": "read", "title": "Weight Sharing + One-Shot NAS", "duration_min": 45,
+              "desc": "所有子结构共享一组权重，大幅降低搜索成本",
+              "key_points": [
+                "Weight Sharing: supernet中所有子结构共享权重，不需要分别训练",
+                "One-Shot NAS: 训练一个supernet → 直接评估各子结构的性能",
+                "问题: 共享权重可能导致评估不准确(有些子结构没有充分训练)",
+                "解决: 渐进式搜索、部分训练、fair sampling等技巧"
+              ],
+              "resources": [
+                {"name": "Lec8 Slides: NAS II", "url": "https://hanlab.mit.edu/courses/2024-fall-65940"}
+              ]
+            },
+            {
+              "id": "4-2-2", "type": "read", "title": "ProxylessNAS: 直接在目标硬件搜索", "duration_min": 30,
+              "desc": "不使用代理指标，直接在目标设备上测量延迟作为约束",
+              "key_points": [
+                "问题: 用FLOPs作为proxy指标不准确(同样FLOPs的模型延迟可能差2x)",
+                "ProxylessNAS: 直接在目标硬件(如手机)上测量延迟",
+                "延迟建模: 用一个可微分的延迟预测器，融入搜索目标",
+                "意义: 搜索出来的网络在目标硬件上真的快"
+              ],
+              "resources": []
+            },
+            {
+              "id": "4-2-3", "type": "read", "title": "NAS和LLM架构设计的联系", "duration_min": 30,
+              "desc": "NAS思想在LLM中的应用：MoE路由、自动配置搜索",
+              "key_points": [
+                "MoE路由: 类似NAS的搜索策略，自动选择哪些expert处理每个token",
+                "LLM架构搜索: 搜索attention head数、FFN维度、层数的最优组合",
+                "混合专家: 不是所有token都走所有参数→动态选择→稀疏激活",
+                "了解: 这是前沿方向，很多工作还在进行中"
+              ],
+              "resources": []
+            },
+            {
+              "id": "4-2-4", "type": "summary", "title": "笔记整理 lec07-08 + 推GitHub", "duration_min": 30,
+              "desc": "整理NAS笔记并推送",
+              "key_points": [
+                "整理: NAS方法演进(random→RL→DARTS→One-Shot→ProxylessNAS)",
+                "画图: DARTS的cell搜索空间示意图",
+                "推送: python study.py note nas \"lec07-08-NAS总结\""
+              ],
+              "resources": []
+            }
           ],
           "algo": []
         }
@@ -684,132 +551,73 @@
     },
     {
       "id": 5,
-      "name": "RL训练基建",
-      "days": [59, 72],
+      "name": "知识蒸馏 (Lec9)",
+      "days": [10, 10],
       "tasks": [
         {
-          "day": 59,
+          "day": 10,
           "infra": [
-            {"id": "5-1-1", "type": "read", "title": "RLHF全流程回顾", "desc": "回顾InstructGPT:SFT→RM→PPO，画出数据流图", "duration_min": 60},
-            {"id": "5-1-2", "type": "practice", "title": "trl库: SFT Trainer实验", "desc": "用HuggingFace trl跑通最简SFT", "duration_min": 90}
-          ],
-          "algo": [
-            {"id": "5-1-a1", "type": "leetcode", "title": "打家劫舍(DP) (LC198)", "url": "https://leetcode.cn/problems/house-robber/", "duration_min": 30}
-          ]
-        },
-        {
-          "day": 60,
-          "infra": [
-            {"id": "5-2-1", "type": "practice", "title": "trl库: DPO Trainer实验", "desc": "用trl跑通DPO训练", "duration_min": 90},
-            {"id": "5-2-2", "type": "practice", "title": "trl库: PPO Trainer实验", "desc": "用trl跑通PPO训练，观察reward曲线", "duration_min": 90}
-          ],
-          "algo": []
-        },
-        {
-          "day": 61,
-          "infra": [
-            {"id": "5-3-1", "type": "read", "title": "veRL架构文档精读", "desc": "阅读veRL readthedocs的Architecture Overview", "duration_min": 90},
-            {"id": "5-3-2", "type": "practice", "title": "veRL环境搭建", "desc": "安装veRL及依赖(Ray, vLLM等)", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "5-3-a1", "type": "leetcode", "title": "打家劫舍II (LC213)", "url": "https://leetcode.cn/problems/house-robber-ii/", "duration_min": 30}
-          ]
-        },
-        {
-          "day": 62,
-          "infra": [
-            {"id": "5-4-1", "type": "practice", "title": "veRL: GSM8K PPO训练", "desc": "跑通veRL官方GSM8K example", "duration_min": 120},
-            {"id": "5-4-2", "type": "read", "title": "veRL: Actor-Critic分离架构理解", "desc": "理解Actor和Critic如何分布在不同GPU上", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 63,
-          "infra": [
-            {"id": "5-5-1", "type": "read", "title": "veRL: Ray worker调度源码", "desc": "理解veRL如何用Ray做分布式编排", "duration_min": 120},
-            {"id": "5-5-2", "type": "read", "title": "veRL: Rollout模块", "desc": "理解experience收集和vLLM推理的集成", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "5-5-a1", "type": "leetcode", "title": "最大正方形(DP) (LC221)", "url": "https://leetcode.cn/problems/maximal-square/", "duration_min": 40}
-          ]
-        },
-        {
-          "day": 64,
-          "infra": [
-            {"id": "5-6-1", "type": "read", "title": "veRL: Trainer和算法实现", "desc": "精读PPO/GRPO算法的具体实现代码", "duration_min": 90},
-            {"id": "5-6-2", "type": "read", "title": "veRL: 数据传输和显存管理", "desc": "理解Actor/Critic/RM之间的tensor传输优化", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 65,
-          "infra": [
-            {"id": "5-7-1", "type": "practice", "title": "veRL: GRPO训练实验", "desc": "尝试GRPO模式训练，对比PPO稳定性", "duration_min": 120},
-            {"id": "5-7-2", "type": "read", "title": "DeepSeek-R1 GRPO实现回顾", "desc": "对照论文，在veRL代码中找到对应实现", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "5-7-a1", "type": "leetcode", "title": "不同路径(DP) (LC62)", "url": "https://leetcode.cn/problems/unique-paths/", "duration_min": 25}
-          ]
-        },
-        {
-          "day": 66,
-          "infra": [
-            {"id": "5-8-1", "type": "read", "title": "OpenRLHF项目结构", "desc": "阅读README和架构文档，理解设计思路", "duration_min": 60},
-            {"id": "5-8-2", "type": "practice", "title": "OpenRLHF: 跑通PPO example", "desc": "安装并跑通OpenRLHF的PPO训练", "duration_min": 90}
-          ],
-          "algo": []
-        },
-        {
-          "day": 67,
-          "infra": [
-            {"id": "5-9-1", "type": "read", "title": "OpenRLHF vs veRL架构对比", "desc": "对比两者的worker编排、数据传输、显存策略", "duration_min": 90},
-            {"id": "5-9-2", "type": "read", "title": "分布式RL训练通信模式", "desc": "理解AllReduce/P2P/Ring在RL训练中的应用", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "5-9-a1", "type": "leetcode", "title": "最小路径和(DP) (LC64)", "url": "https://leetcode.cn/problems/minimum-path-sum/", "duration_min": 30}
-          ]
-        },
-        {
-          "day": 68,
-          "infra": [
-            {"id": "5-10-1", "type": "read", "title": "Reward Model训练理解", "desc": "理解RM的数据格式(chosen/rejected)和训练流程", "duration_min": 60},
-            {"id": "5-10-2", "type": "practice", "title": "Reward Model训练实验", "desc": "用trl或veRL训练一个小规模RM", "duration_min": 90}
-          ],
-          "algo": []
-        },
-        {
-          "day": 69,
-          "infra": [
-            {"id": "5-11-1", "type": "read", "title": "Scaling RLHF: 多节点训练", "desc": "理解跨节点RL训练的挑战和解决方案", "duration_min": 90},
-            {"id": "5-11-2", "type": "read", "title": "Datawhale unlock-deepseek: Infra章节", "desc": "理解DeepSeek训练基础设施的技术拆解", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "5-11-a1", "type": "leetcode", "title": "买卖股票最佳时机(DP) (LC121)", "url": "https://leetcode.cn/problems/best-time-to-buy-and-sell-stock/", "duration_min": 20}
-          ]
-        },
-        {
-          "day": 70,
-          "infra": [
-            {"id": "5-12-1", "type": "read", "title": "DeepSpeed在RL训练中的应用", "desc": "理解ZeRO Stage 1/2/3在RL场景的选择", "duration_min": 90},
-            {"id": "5-12-2", "type": "practice", "title": "DeepSpeed+veRL联合实验", "desc": "尝试开启DeepSpeed ZeRO加速veRL训练", "duration_min": 60}
-          ],
-          "algo": []
-        },
-        {
-          "day": 71,
-          "infra": [
-            {"id": "5-13-1", "type": "summary", "title": "RL训练框架对比报告", "desc": "写veRL vs OpenRLHF vs trl的优劣对比", "duration_min": 60},
-            {"id": "5-13-2", "type": "summary", "title": "RL训练pipeline总结", "desc": "画出完整RL训练流水线:数据→Rollout→RM→Advantage→Update", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "5-13-a1", "type": "leetcode", "title": "会议室II (LC253)", "url": "https://leetcode.cn/problems/meeting-rooms-ii/", "duration_min": 40}
-          ]
-        },
-        {
-          "day": 72,
-          "infra": [
-            {"id": "5-14-1", "type": "summary", "title": "第五层通关总结", "desc": "整理:PPO/DPO/GRPO选型指南 + 分布式RL架构图", "duration_min": 90},
-            {"id": "5-14-2", "type": "practice", "title": "veRL自定义reward实验", "desc": "尝试修改reward函数，观察训练行为变化", "duration_min": 90}
+            {
+              "id": "5-1-1", "type": "read", "title": "蒸馏核心: soft label和dark knowledge", "duration_min": 45,
+              "desc": "理解知识蒸馏的根本原理：teacher的soft output包含比hard label更多的信息",
+              "key_points": [
+                "Dark Knowledge: teacher输出的概率分布包含类别间的相似性信息",
+                "例: 识别一张猫的图片，teacher输出(猫0.7, 狗0.2, 车0.01) → 猫和狗的相似度信息",
+                "Hard label只有: 猫=1, 其他=0 → 丢失了类别间关系",
+                "这就是Hinton说的'dark knowledge'——隐藏在概率分布中的知识"
+              ],
+              "resources": [
+                {"name": "Lec9 Slides: Knowledge Distillation", "url": "https://hanlab.mit.edu/courses/2024-fall-65940"}
+              ]
+            },
+            {
+              "id": "5-1-2", "type": "read", "title": "Temperature参数和损失函数设计", "duration_min": 45,
+              "desc": "理解Temperature如何控制soft label的软化程度，以及损失函数的组成",
+              "key_points": [
+                "Temperature T: softmax(z_i/T)，T越大分布越软(平滑)",
+                "T→∞: 所有类别概率相等(最软)；T=1: 标准softmax(最硬)",
+                "损失函数: L = α·KL(soft_student || soft_teacher) + (1-α)·CE(hard_student, label)",
+                "α通常0.5-0.9: soft loss和hard loss的平衡"
+              ],
+              "resources": []
+            },
+            {
+              "id": "5-1-3", "type": "read", "title": "Feature蒸馏: FitNets和多层级蒸馏", "duration_min": 30,
+              "desc": "不仅学logits，还学中间层特征",
+              "key_points": [
+                "FitNets: student的中间层特征去拟合teacher的中间层特征",
+                "好处: 中间层特征包含更丰富的表示信息，比只学logits效果更好",
+                "挑战: student和teacher的中间层维度可能不同 → 需要regressor对齐",
+                "多层蒸馏: 可以在多个层同时做蒸馏(attention蒸馏、feature蒸馏、logits蒸馏)"
+              ],
+              "resources": [
+                {"name": "FitNets论文", "url": "https://arxiv.org/abs/1412.6550"}
+              ]
+            },
+            {
+              "id": "5-1-4", "type": "read", "title": "LLM蒸馏应用: Alpaca/Vicuna思路", "duration_min": 30,
+              "desc": "LLM时代蒸馏是怎么做的",
+              "key_points": [
+                "Alpaca: 用GPT-3.5(text-davinci-003)生成指令数据→微调LLaMA",
+                "Vicuna: 用ShareGPT的用户对话数据→微调LLaMA→接近ChatGPT质量",
+                "关键转变: 不再是传统logits蒸馏，而是用大模型的输出作为训练数据",
+                "趋势: 数据蒸馏 > logits蒸馏，因为API不开logits"
+              ],
+              "resources": [
+                {"name": "DistilBERT论文", "url": "https://arxiv.org/abs/1910.01108"}
+              ]
+            },
+            {
+              "id": "5-1-5", "type": "summary", "title": "笔记整理 lec09 + 推GitHub", "duration_min": 30,
+              "desc": "整理蒸馏笔记并推送",
+              "key_points": [
+                "整理: 蒸馏方法分类(logits蒸馏/feature蒸馏/数据蒸馏)",
+                "画图: teacher-student蒸馏框架图(T→soft label→student学习)",
+                "手写: 损失函数 L = α·KL + (1-α)·CE",
+                "推送: python study.py note distillation \"lec09-知识蒸馏总结\""
+              ],
+              "resources": []
+            }
           ],
           "algo": []
         }
@@ -817,117 +625,486 @@
     },
     {
       "id": 6,
-      "name": "MetaX MACA适配",
-      "days": [73, 84],
+      "name": "LLM推理优化 (Lec12, Lec13)",
+      "days": [11, 12],
       "tasks": [
         {
-          "day": 73,
+          "day": 11,
           "infra": [
-            {"id": "6-1-1", "type": "read", "title": "沐曦MetaX公司全貌", "desc": "了解沐曦C500/C550/C600 GPU产品线和MACA软件栈定位", "duration_min": 90},
-            {"id": "6-1-2", "type": "read", "title": "MACA编程模型：CUDA+HIP双兼容", "desc": "理解MACA的源码级兼容模型，HIP 5.7基线+MetaX扩展", "duration_min": 60}
+            {
+              "id": "6-1-1", "type": "read", "title": "Transformer推理的O(n²)问题分析", "duration_min": 45,
+              "desc": "深入理解Transformer推理的计算瓶颈在哪里",
+              "key_points": [
+                "Self-Attention: Q·K^T是O(n²)计算量+O(n²)显存(n=序列长度)",
+                "Decoder-only推理: 逐token生成，每步都要和所有历史token做attention",
+                "Batch推理: 多个请求一起推理提高GPU利用率",
+                "核心矛盾: 想要长上下文+大batch → 显存和计算都爆炸"
+              ],
+              "resources": [
+                {"name": "Lec12 Slides: Transformer and LLM", "url": "https://hanlab.mit.edu/courses/2024-fall-65940"}
+              ]
+            },
+            {
+              "id": "6-1-2", "type": "read", "title": "KV Cache原理: 为什么推理时显存是瓶颈", "duration_min": 45,
+              "desc": "理解KV Cache的工作原理和显存占用计算",
+              "key_points": [
+                "KV Cache: 缓存已生成的key和value，避免重复计算",
+                "显存计算: KV_cache = 2 × n_layers × n_heads × d_head × seq_len × batch_size × bytes",
+                "例: LLaMA-7B, seq_len=2048, batch=32, FP16 → KV Cache约4GB",
+                "对比: 模型权重约14GB，KV Cache就占了4GB → 显存是推理瓶颈"
+              ],
+              "resources": []
+            },
+            {
+              "id": "6-1-3", "type": "read", "title": "Prefill vs Decode: compute-bound vs memory-bound", "duration_min": 45,
+              "desc": "理解LLM推理的两个阶段有完全不同的瓶颈",
+              "key_points": [
+                "Prefill阶段: 一次处理整个prompt → 大矩阵乘法 → compute-bound",
+                "Decode阶段: 每次生成1个token → 小矩阵乘法但要读全部KV Cache → memory-bound",
+                "Roofline模型: prefill在计算上限，decode在带宽上限",
+                "优化策略完全不同: prefill→提高算力利用率，decode→减少显存访问"
+              ],
+              "resources": []
+            },
+            {
+              "id": "6-1-4", "type": "summary", "title": "笔记整理 lec12 + 手画推理时间线", "duration_min": 30,
+              "desc": "整理笔记，手画LLM推理的时间线(prefill→decode→decode...)",
+              "key_points": [
+                "手画: LLM推理时间线(prompt输入→prefill→逐token decode)",
+                "手画: 显存占用随时间变化(模型权重+KV Cache增长)",
+                "标注: 每个阶段的瓶颈(compute-bound vs memory-bound)"
+              ],
+              "resources": []
+            }
           ],
           "algo": []
         },
         {
-          "day": 74,
+          "day": 12,
           "infra": [
-            {"id": "6-2-1", "type": "read", "title": "MACA软件栈深潜", "desc": "MACA Runtime/Driver/macacc编译器的层次和API", "duration_min": 90},
-            {"id": "6-2-2", "type": "read", "title": "沐曦GPU硬件架构", "desc": "C500/C550/C600的计算单元、内存层次和性能参数", "duration_min": 60}
+            {
+              "id": "6-2-1", "type": "read", "title": "Continuous Batching: iteration-level调度", "duration_min": 45,
+              "desc": "理解vLLM的核心调度策略：在每次迭代级别动态管理请求",
+              "key_points": [
+                "Static batching: 等最长的序列完成才能释放 → 短序列浪费GPU时间",
+                "Continuous batching: 每个token生成后检查，完成的请求立即释放，新请求立即加入",
+                "效果: GPU利用率从~30%提升到~90%",
+                "调度: prefill和decode混合调度 → 需要精心管理KV Cache的分配和释放"
+              ],
+              "resources": [
+                {"name": "Lec13 Slides: Efficient LLM Deployment", "url": "https://hanlab.mit.edu/courses/2024-fall-65940"},
+                {"name": "Orca论文(Continuous Batching)", "url": "https://arxiv.org/abs/2401.12226"}
+              ]
+            },
+            {
+              "id": "6-2-2", "type": "read", "title": "投机解码: 小模型猜→大模型验证", "duration_min": 45,
+              "desc": "用小模型快速生成候选token，大模型一次验证多个token",
+              "key_points": [
+                "核心思路: 小模型(draft)快速猜k个token → 大模型(target)一次前向验证k个",
+                "接受准则: 如果小模型的猜测和大模型一致→接受；不一致→从第一个错误处重新生成",
+                "加速比: 理想情况下2-3x加速(取决于大小模型的一致性)",
+                "关键: 小模型不需要很准，猜对60-70%就能显著加速"
+              ],
+              "resources": []
+            },
+            {
+              "id": "6-2-3", "type": "read", "title": "PagedAttention补充了解", "duration_min": 30,
+              "desc": "vLLM的核心创新：像操作系统管理虚拟内存一样管理KV Cache",
+              "key_points": [
+                "问题: KV Cache需要连续显存 → 碎片化严重 → 浪费显存",
+                "PagedAttention: 把KV Cache分页管理，不需要连续存放",
+                "类比: 操作系统的虚拟内存 → 按需分配、共享、释放",
+                "效果: 显存利用率接近100%，支持更多并发请求"
+              ],
+              "resources": [
+                {"name": "vLLM论文(PagedAttention)", "url": "https://arxiv.org/abs/2309.06180"}
+              ]
+            },
+            {
+              "id": "6-2-4", "type": "summary", "title": "LLM推理优化全景图 + 推GitHub", "duration_min": 45,
+              "desc": "画出LLM推理优化的完整图景，整理lec12-13笔记推送",
+              "key_points": [
+                "全景图: 显存优化(KV Cache/PagedAttention) + 调度优化(Continuous Batching) + 计算优化(投机解码)",
+                "补充: 量化也属于推理优化(前面已学)，标注在全景图中",
+                "整理lec12-13笔记，和lec02(推理显存部分)形成交叉引用",
+                "推送: python study.py note llm-inference \"lec12-13-LLM推理优化总结\""
+              ],
+              "resources": []
+            }
           ],
-          "algo": [
-            {"id": "6-2-a1", "type": "leetcode", "title": "旋转图像 (LC48)", "url": "https://leetcode.cn/problems/rotate-image/", "duration_min": 25}
-          ]
-        },
+          "algo": []
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "长上下文+视觉模型 (Lec15, Lec16)",
+      "days": [13, 14],
+      "tasks": [
         {
-          "day": 75,
+          "day": 13,
           "infra": [
-            {"id": "6-3-1", "type": "practice", "title": "MACA开发环境搭建", "desc": "安装MACA SDK，用mc_smi验证GPU，跑通deviceQuery", "duration_min": 120},
-            {"id": "6-3-2", "type": "practice", "title": "MACA Hello World: vectorAdd", "desc": "用macacc编译并运行vectorAdd示例，熟悉MACA编程流程", "duration_min": 60}
+            {
+              "id": "7-1-1", "type": "read", "title": "KV Cache随序列爆炸的计算", "duration_min": 45,
+              "desc": "量化分析长上下文的显存开销",
+              "key_points": [
+                "128K上下文: KV Cache = 2 × 32层 × 32头 × 128维 × 131072 × 2B ≈ 几十GB",
+                "这意味着: 单卡放不下，必须优化或分布式",
+                "优化方向: 压缩KV Cache、稀疏注意力、分页管理",
+                "和lec12的联系: 同一个KV Cache问题，但序列更长更极端"
+              ],
+              "resources": [
+                {"name": "Lec15 Slides: Long Context LLM", "url": "https://hanlab.mit.edu/courses/2024-fall-65940"}
+              ]
+            },
+            {
+              "id": "7-1-2", "type": "read", "title": "StreamingLLM: attention sink + 滑动窗口", "duration_min": 45,
+              "desc": "无限长推理的关键洞察：保留attention sink + 近期token就够了",
+              "key_points": [
+                "观察: attention权重集中在前面几个token(attention sink)和最近的token",
+                "StreamingLLM: 只保留sink tokens + 滑动窗口中的tokens",
+                "效果: 可以无限长推理，显存固定不变",
+                "代价: 丢失了中间部分的信息，不适合需要回顾全文的任务"
+              ],
+              "resources": [
+                {"name": "StreamingLLM论文", "url": "https://arxiv.org/abs/2309.17453"}
+              ]
+            },
+            {
+              "id": "7-1-3", "type": "read", "title": "Ring Attention: 分布式长序列推理", "duration_min": 30,
+              "desc": "把长序列切分到多个GPU上分布式推理",
+              "key_points": [
+                "思路: 把序列切成块，每块放在不同GPU上，环形传递K/V",
+                "计算通信重叠: 在计算当前块的同时传递下一块 → 隐藏通信延迟",
+                "好处: 序列长度不再受单卡显存限制",
+                "了解即可: 这是工程实现细节，知道思路即可"
+              ],
+              "resources": []
+            },
+            {
+              "id": "7-1-4", "type": "summary", "title": "笔记整理 lec15", "duration_min": 30,
+              "desc": "整理长上下文LLM笔记",
+              "key_points": [
+                "整理: 长上下文优化方法(KV压缩/稀疏注意力/滑动窗口/分布式)",
+                "手画: StreamingLLM的注意力模式(sink + 滑动窗口)",
+                "计算题: 手算128K上下文的KV Cache显存"
+              ],
+              "resources": []
+            }
           ],
           "algo": []
         },
         {
-          "day": 76,
+          "day": 14,
           "infra": [
-            {"id": "6-4-1", "type": "read", "title": "mc-clang迁移工具原理", "desc": "理解mc-clang如何将CUDA源码转换为MACA源码", "duration_min": 60},
-            {"id": "6-4-2", "type": "practice", "title": "CUDA→MACA代码迁移实操", "desc": "用mc-clang转换vectorAdd/matrixMul并编译运行验证", "duration_min": 90}
+            {
+              "id": "7-2-1", "type": "read", "title": "ViT核心: patch→token→Transformer", "duration_min": 45,
+              "desc": "理解Vision Transformer如何把图像处理成Transformer能处理的序列",
+              "key_points": [
+                "ViT流程: 图像→切成patch(16×16)→线性投影→加位置编码→Transformer处理",
+                "和NLP的类比: patch相当于token，线性投影相当于embedding",
+                "ViT优势: 全局注意力，不限于局部感受野(和CNN不同)",
+                "ViT劣势: 计算量大(O(n²))，需要大数据集预训练"
+              ],
+              "resources": [
+                {"name": "Lec16 Slides: Vision Transformer", "url": "https://hanlab.mit.edu/courses/2024-fall-65940"}
+              ]
+            },
+            {
+              "id": "7-2-2", "type": "read", "title": "EfficientViT: 线性注意力替代softmax", "duration_min": 30,
+              "desc": "用线性注意力把ViT的计算复杂度从O(n²)降到O(n)",
+              "key_points": [
+                "线性注意力: 用kernel近似softmax → attention变为O(n)复杂度",
+                "核心: softmax(Q·K^T)·V ≈ φ(Q)·(φ(K)^T·V)，先算K^T·V再乘Q",
+                "效果: 长序列场景下大幅加速(视频/高分辨率图像)",
+                "trade-off: 近似softmax可能损失精度，但实际效果很好"
+              ],
+              "resources": []
+            },
+            {
+              "id": "7-2-3", "type": "read", "title": "Diffusion推理加速速览", "duration_min": 45,
+              "desc": "扩散模型的推理加速方法，了解主要思路即可",
+              "key_points": [
+                "Diffusion推理瓶颈: 需要几十步迭代去噪，每步都是一次前向传播",
+                "加速: DDIM(确定性采样，步数减少)、Consistency Model(一步生成)",
+                "架构优化: 用更小的UNet/Transformer作为去噪网络",
+                "了解即可: 和LLM Infra不直接相关，但推理优化思路通用"
+              ],
+              "resources": []
+            },
+            {
+              "id": "7-2-4", "type": "summary", "title": "笔记整理 lec15-16-18 + 推GitHub", "duration_min": 30,
+              "desc": "整理长上下文+ViT+Diffusion笔记并推送",
+              "key_points": [
+                "整理: 三个lec的核心内容，标注优先级(长上下文>ViT>Diffusion)",
+                "画图: 长上下文优化方法对比表",
+                "推送: python study.py note vision \"lec15-16-长上下文与视觉模型总结\""
+              ],
+              "resources": []
+            }
           ],
-          "algo": [
-            {"id": "6-4-a1", "type": "leetcode", "title": "螺旋矩阵 (LC54)", "url": "https://leetcode.cn/problems/spiral-matrix/", "duration_min": 30}
-          ]
-        },
+          "algo": []
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "分布式训练 (Lec19, Lec20)",
+      "days": [15, 16],
+      "tasks": [
         {
-          "day": 77,
+          "day": 15,
           "infra": [
-            {"id": "6-5-1", "type": "read", "title": "MACA数学库: macaBLAS/macaDNN/macaFFT", "desc": "理解MACA数学库与cuBLAS/cuDNN/cuFFT的对应关系", "duration_min": 60},
-            {"id": "6-5-2", "type": "practice", "title": "macaBLAS GEMM实操", "desc": "用macaBLAS实现矩阵乘法，对比cuBLAS API调用", "duration_min": 90}
+            {
+              "id": "8-1-1", "type": "read", "title": "数据并行原理 + AllReduce通信", "duration_min": 45,
+              "desc": "理解数据并行的核心：每张卡一份模型副本，数据切分，梯度同步",
+              "key_points": [
+                "数据并行: 4张GPU→数据切成4份→每卡独立前向+反向→梯度AllReduce→更新权重",
+                "AllReduce: 多卡梯度聚合 → 每张卡拿到相同的平均梯度",
+                "同步 vs 异步: 同步(等最慢的卡) vs 异步(不等但梯度有延迟)",
+                "扩展性: GPU越多通信开销越大 → 需要大batch摊薄通信占比"
+              ],
+              "resources": [
+                {"name": "Lec19 Slides: Distributed Training I", "url": "https://hanlab.mit.edu/courses/2024-fall-65940"}
+              ]
+            },
+            {
+              "id": "8-1-2", "type": "read", "title": "Ring AllReduce原理图解", "duration_min": 45,
+              "desc": "理解最常用的分布式通信算法：环形规约",
+              "key_points": [
+                "Ring AllReduce: 把GPU排成环形，梯度沿环传递两圈完成规约",
+                "第一圈(Reduce-Scatter): 每张卡把自己的一份梯度发给下一张，累计",
+                "第二圈(All-Gather): 每张卡把自己累计好的那份发给下一张，广播",
+                "带宽最优: 每张卡发送量=总数据量/N，不会因为GPU多而变慢"
+              ],
+              "resources": []
+            },
+            {
+              "id": "8-1-3", "type": "read", "title": "梯度累积: 小batch模拟大batch", "duration_min": 30,
+              "desc": "显存不够时的常用技巧：多步小batch的梯度累加后再更新",
+              "key_points": [
+                "问题: 大batch显存放不下 → 但数据并行需要大batch才高效",
+                "梯度累积: 每步用小batch前向+反向(不更新)，累积N步后一起更新",
+                "效果: 等价于batch_size × N，但显存只需要batch_size的大小",
+                "和DDP结合: 梯度累积在单卡内做，AllReduce在累积完成后做"
+              ],
+              "resources": []
+            },
+            {
+              "id": "8-1-4", "type": "summary", "title": "笔记整理 lec19", "duration_min": 30,
+              "desc": "整理数据并行笔记",
+              "key_points": [
+                "手画: 数据并行的前向+反向+AllReduce流程",
+                "手画: Ring AllReduce的两圈传递过程",
+                "记录: 梯度累积的公式和使用场景"
+              ],
+              "resources": []
+            }
           ],
           "algo": []
         },
         {
-          "day": 78,
+          "day": 16,
           "infra": [
-            {"id": "6-6-1", "type": "read", "title": "macaNCCL多GPU通信", "desc": "理解MACA的多GPU集合通信和编程模型", "duration_min": 90},
-            {"id": "6-6-2", "type": "practice", "title": "torch_maca: PyTorch适配", "desc": "用torch_maca在沐曦GPU上运行PyTorch模型", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "6-6-a1", "type": "leetcode", "title": "最大子数组和 (LC53)", "url": "https://leetcode.cn/problems/maximum-subarray/", "duration_min": 20}
-          ]
-        },
-        {
-          "day": 79,
-          "infra": [
-            {"id": "6-7-1", "type": "practice", "title": "MACA上部署LLM推理", "desc": "用torch_maca加载并推理一个LLM模型", "duration_min": 120},
-            {"id": "6-7-2", "type": "practice", "title": "性能对比基准测试", "desc": "测量MACA vs CUDA的推理吞吐和延迟", "duration_min": 60}
+            {
+              "id": "8-2-1", "type": "read", "title": "张量并行: Megatron-LM的矩阵切分", "duration_min": 60,
+              "desc": "理解如何把一个矩阵乘法切到多张GPU上并行计算",
+              "key_points": [
+                "问题: 模型太大单卡放不下 → 需要把模型本身切开",
+                "列并行: Y = XA → 把A按列切成[A1, A2] → Y = [XA1, XA2]，各卡算一部分",
+                "行并行: Y = XB → 把B按行切成[B1; B2] → 各卡算一部分再AllReduce",
+                "Megatron-LM组合: FFN的两次矩阵乘法 → 第一次列并行，第二次行并行，只需一次AllReduce"
+              ],
+              "resources": [
+                {"name": "Megatron-LM论文", "url": "https://arxiv.org/abs/1909.08053"}
+              ]
+            },
+            {
+              "id": "8-2-2", "type": "read", "title": "流水线并行 + 微批次", "duration_min": 45,
+              "desc": "按层切分模型，微批次流水线提高GPU利用率",
+              "key_points": [
+                "流水线并行: 模型按层切分(如1-12层在GPU0，13-24层在GPU1)",
+                "朴素问题: GPU0算完后GPU1才开始 → GPU利用率只有50%",
+                "微批次(micro-batch): 把一个batch切成多个micro-batch，流水线式填充",
+                "GPipe: 所有micro-batch前向完再一起反向 → 显存峰值高",
+                "PipeDream: 1F1B策略(一个micro-batch前向后就反向) → 显存更低"
+              ],
+              "resources": []
+            },
+            {
+              "id": "8-2-3", "type": "read", "title": "ZeRO优化: optimizer states分片", "duration_min": 30,
+              "desc": "把模型状态的显存占用分摊到多张GPU上",
+              "key_points": [
+                "问题: 模型权重(Ψ) + 梯度(Ψ) + 优化器状态(Adam: 12Ψ) = 总共约16Ψ",
+                "ZeRO-1: 只分片optimizer states → 每卡 4Ψ + 12Ψ/N",
+                "ZeRO-2: +分片gradients → 每卡 4Ψ + (2Ψ+12Ψ)/N",
+                "ZeRO-3: +分片parameters → 每卡 16Ψ/N，近乎完美扩展"
+              ],
+              "resources": [
+                {"name": "ZeRO论文", "url": "https://arxiv.org/abs/1910.02054"}
+              ]
+            },
+            {
+              "id": "8-2-4", "type": "summary", "title": "3D并行组合策略 + 笔记整理 lec19-20 + 推GitHub", "duration_min": 45,
+              "desc": "理解如何组合三种并行策略，整理笔记推送",
+              "key_points": [
+                "3D并行: 数据并行(跨节点) × 张量并行(节点内) × 流水线并行(跨层)",
+                "组合原则: 张量并行通信最频繁→放节点内(NVLink)，数据/流水线并行→跨节点(网络)",
+                "画图: 3D并行的GPU分配矩阵(每个维度是一种并行)",
+                "推送: python study.py note distributed \"lec19-20-分布式训练总结\""
+              ],
+              "resources": [
+                {"name": "方佳瑞知乎(Colossal-AI)", "url": "https://www.zhihu.com/people/feifeibear"}
+              ]
+            }
           ],
           "algo": []
-        },
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "边缘部署+高效训练 (Lec10, Lec11, Lec21)",
+      "days": [17, 17],
+      "tasks": [
         {
-          "day": 80,
+          "day": 17,
           "infra": [
-            {"id": "6-8-1", "type": "read", "title": "MACA适配常见问题与调试", "desc": "整理API未覆盖/精度发散/性能回退等常见问题和解决方法", "duration_min": 90},
-            {"id": "6-8-2", "type": "practice", "title": "自写kernel MACA适配", "desc": "把Phase 2写的CUDA/Triton kernel迁移到MACA并验证", "duration_min": 90}
-          ],
-          "algo": [
-            {"id": "6-8-a1", "type": "leetcode", "title": "除自身以外数组的乘积 (LC238)", "url": "https://leetcode.cn/problems/product-of-array-except-self/", "duration_min": 25}
-          ]
-        },
-        {
-          "day": 81,
-          "infra": [
-            {"id": "6-9-1", "type": "practice", "title": "MACA Profiler性能分析", "desc": "用MACA Profiler分析kernel热点，理解roofline model", "duration_min": 90},
-            {"id": "6-9-2", "type": "practice", "title": "MACA kernel优化实战", "desc": "优化一个GEMM或attention kernel，对比CUDA基线", "duration_min": 60}
+            {
+              "id": "9-1-1", "type": "read", "title": "MCUNet + TinyEngine速览", "duration_min": 30,
+              "desc": "在微控制器上跑深度学习，了解即可",
+              "key_points": [
+                "MCUNet: 在256KB SRAM的MCU上跑图像分类",
+                "TinyEngine: 编译时优化，消除运行时开销",
+                "了解即可: 除非做端侧部署，知道有这个方向就好"
+              ],
+              "resources": [
+                {"name": "Lec10 Slides: MCUNet", "url": "https://hanlab.mit.edu/courses/2024-fall-65940"}
+              ]
+            },
+            {
+              "id": "9-1-2", "type": "read", "title": "算子融合 + 内存规划", "duration_min": 45,
+              "desc": "推理引擎的核心优化技术，和vLLM/TensorRT直接相关",
+              "key_points": [
+                "算子融合(Kernel Fusion): 多个小算子合成一个大kernel → 减少显存读写",
+                "例: Linear+ReLU+Dropout → 一个融合kernel，中间结果不写回显存",
+                "内存规划: 编译时确定每层tensor的生命周期 → 复用内存(类似寄存器分配)",
+                "和推理引擎的关系: vLLM/TensorRT-LLM/TVM都在做这些优化"
+              ],
+              "resources": [
+                {"name": "Lec11 Slides: TinyEngine and Parallel Processing", "url": "https://hanlab.mit.edu/courses/2024-fall-65940"}
+              ]
+            },
+            {
+              "id": "9-1-3", "type": "read", "title": "LoRA精读: W=W₀+BA，为什么有效", "duration_min": 45,
+              "desc": "理解LoRA的核心原理和为什么它适合LLM微调",
+              "key_points": [
+                "LoRA: W = W₀ + BA，B是d×r矩阵，A是r×d矩阵，r<<d",
+                "参数量: 原来d×d参数，LoRA只需2×d×r参数(r=8时减少99%)",
+                "为什么有效: 模型更新的权重矩阵是低秩的(不需要那么多自由度)",
+                "推理时: BA可以预计算合并到W₀中 → 推理无额外开销"
+              ],
+              "resources": [
+                {"name": "LoRA论文", "url": "https://arxiv.org/abs/2106.09685"}
+              ]
+            },
+            {
+              "id": "9-1-4", "type": "read", "title": "Gradient Checkpointing和其他训练内存优化", "duration_min": 30,
+              "desc": "用计算换内存的经典技巧",
+              "key_points": [
+                "Gradient Checkpointing: 只存部分层的activation，反向时重新计算其余层",
+                "代价: 计算量增加~30%，但显存减少~70%",
+                "其他: Mixed Precision(半精度训练)、Optimizer选择(AdamW vs 8bit Adam)",
+                "和你的工作相关: 在沐曦芯片上做LoRA微调部署"
+              ],
+              "resources": []
+            },
+            {
+              "id": "9-1-5", "type": "summary", "title": "笔记整理 lec10-11-21 + 推GitHub", "duration_min": 30,
+              "desc": "整理边缘部署和高效训练笔记并推送",
+              "key_points": [
+                "整理: 算子融合、内存规划、LoRA、Gradient Checkpointing",
+                "重点: LoRA的数学推导和推理优势",
+                "推送: python study.py note efficient-training \"lec10-11-21-边缘部署与高效训练\""
+              ],
+              "resources": []
+            }
           ],
           "algo": []
-        },
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "总结复盘 (Lec22)",
+      "days": [18, 18],
+      "tasks": [
         {
-          "day": 82,
+          "day": 18,
           "infra": [
-            {"id": "6-10-1", "type": "read", "title": "MACA官方文档精读", "desc": "系统阅读MACA Overview/C++编程指南/Runtime API文档", "duration_min": 120},
-            {"id": "6-10-2", "type": "summary", "title": "撰写CUDA-to-MACA迁移指南", "desc": "整理迁移checklist、常见坑、API映射表和最佳实践", "duration_min": 60}
-          ],
-          "algo": [
-            {"id": "6-10-a1", "type": "leetcode", "title": "搜索二维矩阵 (LC74)", "url": "https://leetcode.cn/problems/search-a-2d-matrix/", "duration_min": 25}
-          ]
-        },
-        {
-          "day": 83,
-          "infra": [
-            {"id": "6-11-1", "type": "summary", "title": "MACA生态评估报告", "desc": "分析MACA的优势、差距、机会，定位自己在沐曦的价值", "duration_min": 90},
-            {"id": "6-11-2", "type": "practice", "title": "MACA LLM推理服务Demo", "desc": "搭建完整LLM推理服务(模型加载→推理→API→性能报告)", "duration_min": 90}
+            {
+              "id": "10-1-1", "type": "summary", "title": "画EfficientML全景知识图谱", "duration_min": 60,
+              "desc": "手画整个课程的知识图谱，建立完整的mental model",
+              "key_points": [
+                "手画: 量化→剪枝→NAS→蒸馏→LLM部署→分布式训练的关系图",
+                "标注每项: 解决什么问题 → 核心方法 → trade-off是什么",
+                "标注技术组合: 量化+剪枝可以一起用，蒸馏+NAS可以一起用",
+                "核心线索: accuracy-efficiency tradeoff贯穿整个课程"
+              ],
+              "resources": [
+                {"name": "Lec22 Slides: Course Summary", "url": "https://hanlab.mit.edu/courses/2024-fall-65940"}
+              ]
+            },
+            {
+              "id": "10-1-2", "type": "summary", "title": "梳理各技术的 Why→How→Trade-off", "duration_min": 45,
+              "desc": "用结构化的方式回顾每项技术",
+              "key_points": [
+                "量化: Why(显存/速度) → How(PTQ/QAT/AWQ) → Trade-off(精度vs压缩)",
+                "剪枝: Why(模型太大) → How(magnitude/LTH/SparseGPT) → Trade-off(稀疏度vs精度)",
+                "NAS: Why(人工设计效率低) → How(DARTS/OFA) → Trade-off(搜索成本vs结构质量)",
+                "蒸馏: Why(大模型太贵) → How(logits/feature蒸馏) → Trade-off(teacher质量vs成本)"
+              ],
+              "resources": []
+            },
+            {
+              "id": "10-1-3", "type": "summary", "title": "整理所有笔记到GitHub", "duration_min": 30,
+              "desc": "确保所有lec的笔记都已推送到GitHub，检查质量",
+              "key_points": [
+                "检查: 每个lec文件夹都有README.md",
+                "检查: 交叉引用是否正确(lec02的显存部分引用lec12的KV Cache)",
+                "检查: 代码示例是否可运行",
+                "最终推送: 完善后的笔记"
+              ],
+              "resources": [
+                {"name": "sxvvv/notes仓库", "url": "https://github.com/sxvvv/notes/tree/main/efficient-ml"}
+              ]
+            },
+            {
+              "id": "10-1-4", "type": "practice", "title": "模拟面试: 抽5个知识点口述", "duration_min": 45,
+              "desc": "从所有lec中随机抽5个知识点，用自己的话讲清楚",
+              "key_points": [
+                "方法: 从每个主题随机抽1个知识点，模拟面试官提问",
+                "标准: 能用1-2分钟讲清楚 What + Why + How",
+                "可以: 用Telegram bot的/feynman命令做AI检验",
+                "目标: 确认真正掌握了，不是'看过就忘'"
+              ],
+              "resources": []
+            },
+            {
+              "id": "10-1-5", "type": "summary", "title": "制定后续学习计划", "duration_min": 30,
+              "desc": "规划EfficientML完成后的下一步",
+              "key_points": [
+                "方向1: vLLM源码精读(推理优化落地) — 和lec12-13直接相关",
+                "方向2: Triton编程(算子层优化) — 和lec11算子融合相关",
+                "方向3: 面试准备 — 用笔记复习+刷面试题",
+                "方向4: 论文精读(AWQ/GPTQ/vLLM论文) — 加深理解"
+              ],
+              "resources": [
+                {"name": "Awesome-MLSys-Blogger", "url": "https://github.com/MLSys-Learner-Resources/Awesome-MLSys-Blogger"}
+              ]
+            }
           ],
           "algo": []
-        },
-        {
-          "day": 84,
-          "infra": [
-            {"id": "6-12-1", "type": "summary", "title": "全路线通关总结", "desc": "回顾84天学习成果，整理六层能力模型知识图谱", "duration_min": 60},
-            {"id": "6-12-2", "type": "summary", "title": "简历和项目经验梳理(沐曦专项)", "desc": "整理所有项目经验，突出MACA适配和CUDA双栈能力", "duration_min": 60},
-            {"id": "6-12-3", "type": "summary", "title": "入职沐曦深化规划", "desc": "列出MACA kernel优化、推理框架适配、新架构跟进计划", "duration_min": 30}
-          ],
-          "algo": [
-            {"id": "6-12-a1", "type": "leetcode", "title": "复习:重做3道之前不熟的题", "url": "", "duration_min": 45}
-          ]
         }
       ]
     }

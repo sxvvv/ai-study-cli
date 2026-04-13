@@ -2,6 +2,7 @@
 import os
 import json
 from config import DATA_DIR, load_json
+from tracker import TOTAL_DAYS
 
 GUIDES_DIR = os.path.join(DATA_DIR, "guides")
 
@@ -9,12 +10,16 @@ GUIDES_DIR = os.path.join(DATA_DIR, "guides")
 def _load_guide(phase_id):
     """加载某个阶段的 guide 文件"""
     phase_names = {
-        1: "phase1_llm_basics",
-        2: "phase2_gpu_programming",
-        3: "phase3_inference_engine",
-        4: "phase4_build_framework",
-        5: "phase5_rl_training",
-        6: "phase6_metax_maca",
+        1: "phase1_quantization_basics",
+        2: "phase2_quantization_advanced",
+        3: "phase3_pruning",
+        4: "phase4_nas",
+        5: "phase5_distillation",
+        6: "phase6_llm_inference",
+        7: "phase7_long_context_vision",
+        8: "phase8_distributed_training",
+        9: "phase9_edge_efficient",
+        10: "phase10_summary",
     }
     filename = phase_names.get(phase_id, "")
     if not filename:
@@ -136,6 +141,6 @@ def get_open_mode_daily(current_day):
         return None
 
     # 循环轮转主题
-    extra_day = current_day - 84  # Day 85 → 1, Day 86 → 2, ...
+    extra_day = current_day - TOTAL_DAYS  # 循环轮转
     idx = (extra_day - 1) % len(topics)
     return topics[idx]

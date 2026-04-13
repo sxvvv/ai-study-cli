@@ -1,0 +1,84 @@
+{
+  "day1": {
+    "topic": "量化专题 (Quantization)",
+    "lectures": ["Lec1: Introduction", "Lec2: DL Basics", "Lec5: Quantization I", "Lec6: Quantization II", "Lec13: Efficient LLM Deployment", "Lec14: LLM Post-Training Quantization"],
+    "core_papers": [
+      {"name": "LLM.int8()", "url": "https://arxiv.org/abs/2208.07339", "key_idea": "发现LLM中存在极少量的outlier维度，用混合精度分解处理"},
+      {"name": "AWQ", "url": "https://arxiv.org/abs/2306.00978", "key_idea": "保护1%的salient channel即可维持精度", "github": "https://github.com/mit-han-lab/llm-awq", "stars": 3493},
+      {"name": "GPTQ", "url": "https://arxiv.org/abs/2210.17323", "key_idea": "基于Hessian的逐列量化，最小化重构误差"},
+      {"name": "SmoothQuant", "url": "https://arxiv.org/abs/2211.10438", "key_idea": "把activation outlier迁移到weight上", "github": "https://github.com/mit-han-lab/smoothquant", "stars": 1631},
+      {"name": "QServe", "url": "https://arxiv.org/abs/2405.04532", "key_idea": "W4A8KV4量化+系统协同设计", "github": "https://github.com/mit-han-lab/omniserve", "stars": 824}
+    ],
+    "blogger_resources": [
+      {"name": "进击的Killua", "url": "https://www.zhihu.com/people/zeroine-68/posts", "focus": "量化系列专家，SJTU"},
+      {"name": "Tim Dettmers", "url": "https://timdettmers.com/", "focus": "LoRA & LLM.int8()作者"},
+      {"name": "王鸿钰", "url": "https://www.zhihu.com/people/gu-ren-gui-xu", "focus": "BitNet系列作者"},
+      {"name": "方佳瑞", "url": "https://www.zhihu.com/people/feifeibear", "focus": "Colossal-AI/xDiT作者，系统视角讲推理"}
+    ],
+    "hands_on": {
+      "title": "PyTorch量化对比",
+      "steps": "torch.quantization.quantize_dynamic() 对ResNet18做INT8量化 → 对比模型大小/推理速度/精度",
+      "expected": "模型大小减半，推理提速1.5-2x，精度损失<1%"
+    }
+  },
+  "day2": {
+    "topic": "剪枝+NAS+蒸馏 (Pruning + NAS + Distillation)",
+    "lectures": ["Lec3: Pruning I", "Lec4: Pruning II", "Lec7: NAS I", "Lec8: NAS II", "Lec9: Knowledge Distillation", "Lec10: MCUNet"],
+    "core_papers": [
+      {"name": "Lottery Ticket Hypothesis", "url": "https://arxiv.org/abs/1803.03635", "key_idea": "随机初始化网络中存在可训练的稀疏子网络"},
+      {"name": "SparseGPT", "url": "https://arxiv.org/abs/2301.00774", "key_idea": "一次性剪枝LLM不需要重训练"},
+      {"name": "Wanda", "url": "https://arxiv.org/abs/2310.08119", "key_idea": "用weight×activation magnitude决定剪谁"},
+      {"name": "DARTS", "url": "https://arxiv.org/abs/1806.09055", "key_idea": "可微分NAS，把离散搜索变成连续优化"},
+      {"name": "DistilBERT", "url": "https://arxiv.org/abs/1910.01108", "key_idea": "用蒸馏把BERT压缩40%保留97%能力"}
+    ],
+    "blogger_resources": [
+      {"name": "CS二猹树", "url": "https://www.zhihu.com/people/tang-san-56-49", "focus": "LLM压缩 & 量化，HKUST"},
+      {"name": "pprp", "url": "https://www.zhihu.com/people/peijieDong", "focus": "LLM压缩 & 量化"}
+    ],
+    "hands_on": {
+      "title": "Magnitude Pruning实验",
+      "steps": "torch.nn.utils.prune对ResNet18做L1 pruning → 画稀疏度vs精度曲线",
+      "expected": "50%稀疏度下精度几乎不变，80%开始明显下降"
+    }
+  },
+  "day3": {
+    "topic": "LLM+多模态高效推理",
+    "lectures": ["Lec11: TinyEngine", "Lec12: Transformer & LLM", "Lec15: Long Context LLM", "Lec16: ViT", "Lec17: GAN/Video/PointCloud", "Lec18: Diffusion"],
+    "core_papers": [
+      {"name": "StreamingLLM", "url": "https://arxiv.org/abs/2309.17453", "key_idea": "Attention Sink + 滑动窗口实现无限长推理", "github": "https://github.com/mit-han-lab/streaming-llm", "stars": 7208},
+      {"name": "DuoAttention", "url": "https://arxiv.org/abs/2410.10819", "key_idea": "区分retrieval head和streaming head用不同策略", "github": "https://github.com/mit-han-lab/duo-attention", "stars": 535},
+      {"name": "Quest", "url": "https://arxiv.org/abs/2406.10712", "key_idea": "Query-aware稀疏注意力", "github": "https://github.com/mit-han-lab/Quest", "stars": 379},
+      {"name": "EfficientViT", "url": "https://arxiv.org/abs/2305.07027", "key_idea": "线性注意力替代softmax", "github": "https://github.com/mit-han-lab/efficientvit", "stars": 0}
+    ],
+    "blogger_resources": [
+      {"name": "Beidi Chen", "url": "https://keroro824.github.io/lab-page/", "focus": "ShadowKV/H2O/DejaVu，稀疏注意力专家"},
+      {"name": "刀刀宁", "url": "https://www.zhihu.com/column/c_1796502192443777024", "focus": "大模型推理专栏"},
+      {"name": "方佳瑞", "url": "https://www.zhihu.com/people/feifeibear", "focus": "xDiT/Colossal-AI，并行训练推理"}
+    ],
+    "hands_on": {
+      "title": "AutoAWQ量化LLM推理",
+      "steps": "pip install autoawq → 量化Qwen2-1.5B → 对比FP16和INT4的显存/tokens/s",
+      "expected": "显存从~3GB降到~1GB，推理速度提升1.5-2x"
+    }
+  },
+  "day4": {
+    "topic": "高效训练+总结",
+    "lectures": ["Lec19: Distributed Training I", "Lec20: Distributed Training II", "Lec21: On-Device Training", "Lec22: Course Summary", "Lec23: QML II"],
+    "core_papers": [
+      {"name": "Megatron-LM", "url": "https://arxiv.org/abs/1909.08053", "key_idea": "张量并行：一个矩阵乘法切成多块并行计算"},
+      {"name": "ZeRO", "url": "https://arxiv.org/abs/1910.02054", "key_idea": "把optimizer states/gradients/参数分片存储"},
+      {"name": "LoRA", "url": "https://arxiv.org/abs/2106.09685", "key_idea": "W=W0+BA，只训练低秩矩阵，参数减少1000x"},
+      {"name": "PipeDream", "url": "https://arxiv.org/abs/1806.03377", "key_idea": "流水线并行+微批次，解决bubble问题"}
+    ],
+    "blogger_resources": [
+      {"name": "方佳瑞", "url": "https://www.zhihu.com/people/feifeibear", "focus": "Colossal-AI，分布式训练专家"},
+      {"name": "谁来救救我", "url": "https://www.zhihu.com/people/ming-yin-2-93", "focus": "并行训练推理，NUS"},
+      {"name": "66RING", "url": "https://www.zhihu.com/people/66ring/posts", "focus": "新手友好的MLSys文章"}
+    ],
+    "hands_on": {
+      "title": "PyTorch DDP体验",
+      "steps": "torchrun --nproc_per_node=2 启动DDP训练 → 对比单卡vs双卡throughput",
+      "expected": "双卡接近2x加速，GPU利用率提升"
+    }
+  }
+}

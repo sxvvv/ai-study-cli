@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from config import PROGRESS_FILE, load_json, save_json, get_config
 
 # 总天数
-TOTAL_DAYS = 84
+TOTAL_DAYS = 18
 
 
 def get_progress():
@@ -119,22 +119,93 @@ def mark_skip(progress, task_id, reason=""):
 
 
 def _update_streak(progress):
-    """更新连续打卡天数"""
+    """更新连续打卡天数（分层连胜系统）
+
+    分层规则:
+    - micro: 答3道quiz或复习5张闪卡（最低门槛，维持streak）
+    - plan: 完成当日全部计划任务（bonus）
+    - demo: 通过技能验证挑战（bonus）
+    """
     today = datetime.now().date()
     streak = 0
+    layer_best = "none"
 
-    for i in range(365):  # 最多检查一年
+    for i in range(365):
         check_date = (today - timedelta(days=i)).strftime("%Y-%m-%d")
-        if check_date in progress["daily_logs"] and progress["daily_logs"][check_date].get("completed"):
+        day_log = progress["daily_logs"].get(check_date, {})
+
+        has_micro = day_log.get("micro_achieved", False)
+        has_plan = day_log.get("plan_achieved", False)
+        has_demo = day_log.get("demo_achieved", False)
+
+        if has_micro or has_plan or has_demo or day_log.get("completed"):
             streak += 1
+            # 记录今天最好的层级
+            if i == 0:
+                if has_demo:
+                    layer_best = "demo"
+                elif has_plan:
+                    layer_best = "plan"
+                elif has_micro:
+                    layer_best = "micro"
+                else:
+                    layer_best = "micro"  # 旧数据兼容
         else:
             if i == 0:
-                # 今天还没打卡，检查昨天
                 continue
             break
 
     progress["streak"] = streak
+    progress["streak_layer"] = layer_best
     progress["max_streak"] = max(progress.get("max_streak", 0), streak)
+
+
+def record_streak_layer(layer):
+    """记录今日streak层级达成
+
+    Args:
+        layer: "micro" | "plan" | "demo"
+    """
+    progress = get_progress()
+    today_str = datetime.now().strftime("%Y-%m-%d")
+
+    if today_str not in progress["daily_logs"]:
+        progress["daily_logs"][today_str] = {
+            "completed": [],
+            "study_started": datetime.now().strftime("%H:%M"),
+        }
+
+    log = progress["daily_logs"][today_str]
+    layer_key = f"{layer}_achieved"
+
+    if log.get(layer_key):
+        return f"今日{layer}已达成"
+
+    log[layer_key] = True
+    _update_streak(progress)
+    save_progress(progress)
+
+    labels = {"micro": "最低门槛✅", "plan": "计划完成🏆", "demo": "技能验证🎯"}
+    return f"✅ 今日{layer}达成！{labels.get(layer, '')} 连续{progress['streak']}天"
+
+
+def check_micro_achieved(progress=None):
+    """检查今日micro是否达成（答3道quiz或复习5张闪卡）"""
+    if progress is None:
+        progress = get_progress()
+
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    log = progress.get("daily_logs", {}).get(today_str, {})
+
+    # 直接标记
+    if log.get("micro_achieved"):
+        return True
+
+    # 基于quiz答题数判断
+    quiz_count = log.get("quiz_answers_today", 0)
+    flashcard_reviews = log.get("flashcard_reviews_today", 0)
+
+    return quiz_count >= 3 or flashcard_reviews >= 5
 
 
 def get_day_completion_rate(progress, day_tasks):
@@ -158,12 +229,16 @@ def get_day_completion_rate(progress, day_tasks):
 def get_phase_info(day):
     """根据天数返回所在阶段信息"""
     phases = [
-        (1,  15, 1, "LLM从零理解"),
-        (16, 27, 2, "GPU编程 CUDA/Triton"),
-        (28, 45, 3, "推理引擎"),
-        (46, 58, 4, "自制推理框架"),
-        (59, 72, 5, "RL训练基建"),
-        (73, 84, 6, "MetaX MACA适配"),
+        (1,  2, 1, "量化基础 (Lec5)"),
+        (3,  5, 2, "量化进阶+LLM量化 (Lec6,14)"),
+        (6,  7, 3, "剪枝 (Lec3,4)"),
+        (8,  9, 4, "NAS (Lec7,8)"),
+        (10, 10, 5, "知识蒸馏 (Lec9)"),
+        (11, 12, 6, "LLM推理优化 (Lec12,13)"),
+        (13, 14, 7, "长上下文+视觉模型 (Lec15,16)"),
+        (15, 16, 8, "分布式训练 (Lec19,20)"),
+        (17, 17, 9, "边缘部署+高效训练 (Lec10,11,21)"),
+        (18, 18, 10, "总结复盘"),
     ]
     for start, end, phase_id, name in phases:
         if start <= day <= end:

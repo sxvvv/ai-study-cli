@@ -1,4 +1,4 @@
-"""推送通知模块 - PushPlus微信推送 + 飞书推送 + Windows Toast"""
+"""推送通知模块 - Telegram + PushPlus微信推送 + 飞书推送 + Windows Toast"""
 import os
 import sys
 import json
@@ -16,6 +16,52 @@ except ImportError:
     pass
 
 from config import get_config
+
+
+def push_telegram(title, content, parse_mode=None):
+    """通过Telegram Bot推送消息
+
+    Args:
+        title: 消息标题
+        content: 消息内容
+        parse_mode: 解析模式 HTML/Markdown/None
+    """
+    config = get_config()
+    token = config.get("telegram_bot_token", "")
+    chat_id = config.get("telegram_chat_id", "")
+
+    if not token or not chat_id:
+        return False, "未配置Telegram Bot token或chat_id，请运行 study init 设置"
+
+    # 清理内容：移除可能导致HTML解析失败的字符
+    import re
+    clean_content = content.replace("━", "=").replace("═", "=").replace("╔", "[").replace("╗", "]")
+    clean_content = clean_content.replace("╚", "[").replace("╝", "]").replace("╠", "[").replace("╣", "]")
+    clean_content = clean_content.replace("║", "|").replace("┃", "|")
+    clean_content = re.sub(r'[^\x00-\xFFFF]', '', clean_content)
+
+    text = f"*{title}*\n\n{clean_content}"
+    # Telegram消息长度限制4096
+    if len(text) > 4000:
+        text = text[:4000] + "\n\n..."
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    data = json.dumps({
+        "chat_id": chat_id,
+        "text": text,
+    }).encode("utf-8")
+
+    req = Request(url, data=data, headers={"Content-Type": "application/json"})
+
+    try:
+        with urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read().decode())
+            if result.get("ok"):
+                return True, "Telegram推送成功！"
+            else:
+                return False, f"推送失败: {result.get('description', '未知错误')}"
+    except Exception as e:
+        return False, f"Telegram推送请求失败: {str(e)}"
 
 
 def push_wechat(title, content):
@@ -155,37 +201,89 @@ def push_windows_toast(title, message):
 
 
 def send_daily_reminder():
-    """发送每日学习提醒（同时推微信、飞书和Windows通知）"""
+    """发送每日学习提醒（Telegram + 微信 + 飞书 + Windows通知）"""
     from planner import get_today_summary_for_push
+    from tracker import get_progress, get_current_day, check_micro_achieved
+
+    progress = get_progress()
+    current_day = get_current_day(progress)
+    micro_done = check_micro_achieved(progress)
 
     title = f"📚 AI学习提醒 - {datetime.now().strftime('%m月%d日')}"
     content = get_today_summary_for_push()
 
+    # 逼输出提醒: 如果今天还没做任何学习活动
+    if not micro_done:
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        log = progress.get("daily_logs", {}).get(today_str, {})
+        has_output = bool(log.get("completed"))
+        if not has_output:
+            content += "\n\n⚠️ 今天还没有任何学习记录！"
+            content += "\n💡 最低门槛: 答3道quiz 或 复习5张闪卡"
+            content += "\n   运行: study quiz 或 study flash"
+
     results = []
 
-    # 微信推送
-    ok, msg = push_wechat(title, content)
-    results.append(f"微信推送: {'✅' if ok else '❌'} {msg}")
-
-    # 飞书推送
+    # Telegram推送（仅Telegram）
     config = get_config()
-    if config.get("feishu_webhook"):
-        ok, msg = push_feishu(title, content)
-        results.append(f"飞书推送: {'✅' if ok else '❌'} {msg}")
-
-    # Windows Toast
-    short_msg = content.split("\n")[0]  # Toast只显示第一行
-    ok, msg = push_windows_toast(title, short_msg)
-    results.append(f"系统通知: {'✅' if ok else '❌'} {msg}")
+    if config.get("telegram_bot_token"):
+        ok, msg = push_telegram(title, content)
+        results.append(f"Telegram: {'✅' if ok else '❌'} {msg}")
+    else:
+        results.append("❌ 未配置Telegram Bot，请运行 study init 设置")
 
     return "\n".join(results)
 
 
-def setup_windows_schedule(time_str="09:00"):
+def send_evening_reminder():
+    """晚间提醒：逼输出 — 检查今日是否完成学习+输出"""
+    from tracker import get_progress, get_current_day, check_micro_achieved
+    from planner import get_today_summary_for_push
+
+    progress = get_progress()
+    current_day = get_current_day(progress)
+    micro_done = check_micro_achieved(progress)
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    log = progress.get("daily_logs", {}).get(today_str, {})
+    completed = log.get("completed", [])
+
+    if micro_done and len(completed) >= 2:
+        # 今天做得不错，鼓励一下
+        title = "🎉 今日学习达标！"
+        content = f"今日已完成 {len(completed)} 个任务，micro已达成！\n"
+        content += "别忘了: study sync 推送总结到 GitHub"
+        content += "\n坚持就是胜利！明天继续💪"
+    else:
+        # 需要督促
+        title = "⚠️ 今日学习提醒"
+        content = f"今天还没有完成学习任务！\n\n"
+        content += "📌 最低门槛（5分钟）:\n"
+        content += "  study quiz — 答3道题\n"
+        content += "  study flash — 复习5张闪卡\n\n"
+        content += "💪 完成今日计划:\n"
+        content += "  study today — 查看今日任务\n"
+        content += "  study done <ID> — 标记完成\n\n"
+        content += "📝 记得输出:\n"
+        content += "  study sync — 推送总结到GitHub\n"
+        content += f"🔥 当前连续: {progress.get('streak', 0)} 天，别断！"
+
+    results = []
+    config = get_config()
+    if config.get("telegram_bot_token"):
+        ok, msg = push_telegram(title, content)
+        results.append(f"Telegram: {'✅' if ok else '❌'} {msg}")
+    else:
+        results.append("❌ 未配置Telegram Bot，请运行 study init 设置")
+
+    return "\n".join(results)
+
+
+def setup_windows_schedule(time_str="09:00", evening_time="21:00"):
     """设置Windows计划任务，每天定时提醒
-    
+
     Args:
-        time_str: 提醒时间，格式 "HH:MM"
+        time_str: 早晨提醒时间，格式 "HH:MM"
+        evening_time: 晚间提醒时间，格式 "HH:MM"
     """
     if sys.platform != "win32":
         return _generate_cron_hint(time_str)
@@ -195,35 +293,45 @@ def setup_windows_schedule(time_str="09:00"):
     python_exe = sys.executable
     study_script = os.path.join(script_dir, "study.py")
 
-    task_name = "AIStudyCLI_DailyReminder"
+    results = []
 
-    # 创建计划任务的命令
+    # 早晨提醒
+    morning_task = "AIStudyCLI_DailyReminder"
     cmd = (
-        f'schtasks /create /tn "{task_name}" '
+        f'schtasks /create /tn "{morning_task}" '
         f'/tr "\\"{python_exe}\\" \\"{study_script}\\" notify" '
         f'/sc daily /st {time_str} /f'
     )
-
     try:
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         if result.returncode == 0:
-            return (
-                f"✅ 定时提醒已设置！\n"
-                f"   任务名: {task_name}\n"
-                f"   时间: 每天 {time_str}\n"
-                f"   操作: 自动推送今日学习任务到微信\n\n"
-                f"   如需修改时间，重新运行: study remind {time_str}\n"
-                f"   如需删除，运行: schtasks /delete /tn \"{task_name}\" /f"
-            )
+            results.append(f"✅ 早晨提醒: 每天 {time_str}")
         else:
-            return (
-                f"❌ 设置失败（可能需要管理员权限）\n"
-                f"   错误: {result.stderr}\n\n"
-                f"   请尝试以管理员身份运行命令行，或手动创建计划任务:\n"
-                f"   {cmd}"
-            )
+            results.append(f"❌ 早晨提醒设置失败: {result.stderr}")
     except Exception as e:
-        return f"❌ 设置失败: {str(e)}\n\n请手动运行: {cmd}"
+        results.append(f"❌ 早晨提醒设置失败: {str(e)}")
+
+    # 晚间提醒（逼输出）
+    evening_task = "AIStudyCLI_EveningReminder"
+    cmd = (
+        f'schtasks /create /tn "{evening_task}" '
+        f'/tr "\\"{python_exe}\\" \\"{study_script}\\" notify evening" '
+        f'/sc daily /st {evening_time} /f'
+    )
+    try:
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        if result.returncode == 0:
+            results.append(f"✅ 晚间提醒: 每天 {evening_time} (督促输出)")
+        else:
+            results.append(f"❌ 晚间提醒设置失败: {result.stderr}")
+    except Exception as e:
+        results.append(f"❌ 晚间提醒设置失败: {str(e)}")
+
+    results.append(f"\n如需修改: study remind {time_str}")
+    results.append(f"如需删除: schtasks /delete /tn \"{morning_task}\" /f")
+    results.append(f"          schtasks /delete /tn \"{evening_task}\" /f")
+
+    return "\n".join(results)
 
 
 def _generate_cron_hint(time_str):

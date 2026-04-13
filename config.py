@@ -42,7 +42,7 @@ def save_config(config):
 
 def init_config(pushplus_token=None, remind_time="09:00", feishu_webhook=None,
                 feishu_secret=None, github_token=None, github_notes_repo=None,
-                job_start_date=None):
+                job_start_date=None, telegram_bot_token=None, telegram_chat_id=None):
     """初始化配置"""
     config = get_config() or {}
     config.update({
@@ -53,6 +53,8 @@ def init_config(pushplus_token=None, remind_time="09:00", feishu_webhook=None,
         "github_token": github_token or config.get("github_token", ""),
         "github_notes_repo": github_notes_repo or config.get("github_notes_repo", ""),
         "job_start_date": job_start_date or config.get("job_start_date", ""),
+        "telegram_bot_token": telegram_bot_token or config.get("telegram_bot_token", ""),
+        "telegram_chat_id": telegram_chat_id or config.get("telegram_chat_id", ""),
         "start_date": config.get("start_date"),
         "initialized": True
     })

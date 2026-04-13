@@ -74,6 +74,45 @@ def _github_api(path, method="GET", data=None):
         return None, f"请求失败: {str(e)}"
 
 
+def get_starred_repos():
+    """获取GitHub starred仓库列表"""
+    result, error = _github_api("user/starred?per_page=100")
+    if error:
+        return [], error
+
+    repos = []
+    for r in result:
+        repos.append({
+            "name": r.get("full_name", ""),
+            "description": r.get("description", "") or "",
+            "url": r.get("html_url", ""),
+            "stars": r.get("stargazers_count", 0),
+            "language": r.get("language", "") or "",
+        })
+    return repos, None
+
+
+def get_starred_with_skills():
+    """获取starred仓库并映射到技能"""
+    repos, error = get_starred_repos()
+    if error:
+        return [], error
+
+    from skillmap import map_repo_to_skill
+
+    for repo in repos:
+        search_text = f"{repo['name']} {repo['description']}".lower()
+        skills = map_repo_to_skill(search_text)
+        repo["matched_skills"] = [
+            {"id": s["id"], "name": s["name"], "jd_relevance": s["jd_relevance"]}
+            for s in skills
+        ]
+
+    # 按匹配技能数排序
+    repos.sort(key=lambda r: len(r["matched_skills"]), reverse=True)
+    return repos, None
+
+
 def get_repo_tree():
     """获取仓库目录结构"""
     result, error = _github_api("git/trees/main?recursive=1")

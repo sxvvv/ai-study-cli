@@ -17,3 +17,6 @@ venv/
 .idea/
 *.swp
 *.swo
+
+# Node
+node_modules/

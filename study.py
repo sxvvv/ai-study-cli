@@ -3,7 +3,7 @@
 AI Study CLI - AI Infra学习助手
 ================================
 一个帮助你系统学习AI基础设施知识的命令行工具。
-84天结构化课程 + 课程后持续学习模式（GitHub/知乎/B站AI热点推荐）
+4天韩松EfficientML速览课程
 
 用法:
   python study.py today          - 查看今日学习任务
@@ -52,7 +52,8 @@ from planner import get_today_tasks, get_today_summary_for_push
 from quiz import get_quiz_questions, record_quiz_result, format_quiz, get_quiz_stats
 from resources import get_phase_resources, add_custom_resource
 from notifier import (
-    push_wechat, push_feishu, send_daily_reminder, setup_windows_schedule
+    push_wechat, push_feishu, push_telegram, send_daily_reminder,
+    send_evening_reminder, setup_windows_schedule
 )
 
 
@@ -442,6 +443,7 @@ def cmd_init():
 ╠══════════════════════════════════════════════════╣
 ║                                                  ║
 ║  本工具支持:                                      ║
+║  🤖 Telegram推送 (推荐)                           ║
 ║  📱 微信推送 (PushPlus)                           ║
 ║  🐦 飞书推送 (自定义机器人)                         ║
 ║  🐙 GitHub笔记同步                                ║
@@ -450,14 +452,24 @@ def cmd_init():
 ╚══════════════════════════════════════════════════╝
 """)
 
-    # === 1. 微信推送 ===
-    print("═══ 📱 微信推送 (PushPlus) ═══")
+    # === 1. Telegram推送（优先推荐）===
+    print("═══ 🤖 Telegram推送 (推荐) ═══")
+    print("  1. 在Telegram中搜索 @BotFather 创建新Bot")
+    print("  2. 获取Bot Token")
+    print("  3. 发送 /start 给你的Bot获取 chat_id\n")
+    tg_token = input("请输入Telegram Bot Token (直接回车跳过): ").strip()
+    tg_chat_id = ""
+    if tg_token:
+        tg_chat_id = input("请输入Telegram Chat ID: ").strip()
+
+    # === 2. 微信推送 ===
+    print("\n═══ 📱 微信推送 (PushPlus) ═══")
     print("  1. 访问 https://www.pushplus.plus/")
     print("  2. 微信扫码关注并登录")
     print("  3. 复制你的 token\n")
     token = input("请输入PushPlus token (直接回车跳过): ").strip()
 
-    # === 2. 飞书推送 ===
+    # === 3. 飞书推送 ===
     print("\n═══ 🐦 飞书推送 (自定义机器人) ═══")
     print("  1. 打开飞书，创建一个群（或使用已有群）")
     print("  2. 群设置 → 机器人 → 添加机器人 → 自定义机器人")
@@ -469,7 +481,7 @@ def cmd_init():
     if feishu_webhook:
         feishu_secret = input("请输入飞书签名密钥 (没有则回车跳过): ").strip()
 
-    # === 3. GitHub 笔记同步 ===
+    # === 4. GitHub 笔记同步 ===
     print("\n═══ 🐙 GitHub 笔记同步 ═══")
     print("  将学习记录推送到你的 GitHub 笔记仓库")
     print("  需要: Personal Access Token (PAT) + 仓库名\n")
@@ -478,12 +490,12 @@ def cmd_init():
     if github_token:
         github_repo = input("请输入笔记仓库 (如 sxvvv/notes): ").strip()
 
-    # === 4. 上班日期 ===
+    # === 5. 上班日期 ===
     print("\n═══ ⏰ 上班倒计时 ═══")
     print("  设置上班日期，每天显示倒计时提醒\n")
     job_date = input("请输入上班日期 (格式 YYYY-MM-DD, 回车跳过): ").strip()
 
-    # === 5. 提醒时间 ===
+    # === 6. 提醒时间 ===
     remind_time = input("\n请输入每日提醒时间 (默认09:00): ").strip() or "09:00"
 
     # 保存配置
@@ -495,10 +507,13 @@ def cmd_init():
         github_token=github_token,
         github_notes_repo=github_repo,
         job_start_date=job_date,
+        telegram_bot_token=tg_token,
+        telegram_chat_id=tg_chat_id,
     )
 
     # 打印配置结果
     print(f"\n✅ 配置已保存！")
+    print(f"   Telegram:  {'已配置 ✅' if tg_token else '未配置 ⏭️'}")
     print(f"   微信推送:  {'已配置 ✅' if token else '未配置 ⏭️'}")
     print(f"   飞书推送:  {'已配置 ✅' if feishu_webhook else '未配置 ⏭️'}")
     print(f"   GitHub:   {'已配置 ✅' if github_token else '未配置 ⏭️'}")
@@ -506,6 +521,11 @@ def cmd_init():
     print(f"   提醒时间:  {remind_time}")
 
     # 测试推送
+    if tg_token:
+        print("\n正在测试Telegram推送...")
+        ok, msg = push_telegram("🎉 AI Study CLI", "推送配置成功！你的学习助手已准备就绪。")
+        print(f"   {'✅' if ok else '❌'} {msg}")
+
     if token:
         print("\n正在测试微信推送...")
         ok, msg = push_wechat("🎉 AI Study CLI", "推送配置成功！你的学习助手已准备就绪。")
@@ -521,22 +541,21 @@ def cmd_init():
     result = setup_windows_schedule(remind_time)
     print(result)
 
-    print(f"\n🎉 初始化完成！运行 'python study.py today' 开始学习吧！")
+    print(f"\n🎉 初始化完成！")
+    print(f"   运行 'python study.py today' 开始学习")
+    print(f"   运行 'python study.py serve' 启动API服务")
+    print(f"   运行 'python study.py bot' 启动Telegram机器人")
 
 
 def cmd_notify(test=False):
-    """发送推送通知"""
+    """发送推送通知（仅Telegram）"""
     if test:
-        results = []
-        ok, msg = push_wechat("🧪 测试推送", "如果你收到这条消息，说明微信推送配置正确！")
-        results.append(f"微信: {'✅' if ok else '❌'} {msg}")
-
         config = get_config()
-        if config.get("feishu_webhook"):
-            ok, msg = push_feishu("🧪 测试推送", "如果你收到这条消息，说明飞书推送配置正确！")
-            results.append(f"飞书: {'✅' if ok else '❌'} {msg}")
-
-        print("\n".join(results))
+        if config.get("telegram_bot_token"):
+            ok, msg = push_telegram("🧪 测试推送", "如果你收到这条消息，说明Telegram推送配置正确！")
+            print(f"Telegram: {'✅' if ok else '❌'} {msg}")
+        else:
+            print("❌ 未配置Telegram Bot，请运行 study init 设置")
     else:
         result = send_daily_reminder()
         print(result)
@@ -551,6 +570,58 @@ def cmd_remind(time_str="09:00"):
     config = get_config()
     config["remind_time"] = time_str
     save_config(config)
+
+
+def cmd_serve():
+    """启动FastAPI服务"""
+    from api.server import run_server
+    print("🚀 启动 API 服务器 (http://localhost:8000)...")
+    print("   API文档: http://localhost:8000/docs")
+    run_server()
+
+
+def cmd_bot():
+    """启动Telegram机器人"""
+    from bot.bot import run_bot
+    run_bot()
+
+
+def cmd_skills():
+    """显示JD技能地图"""
+    from skillmap import format_skill_map
+    print(format_skill_map())
+
+
+def cmd_stars():
+    """显示GitHub starred仓库与技能映射"""
+    from github_sync import get_starred_with_skills
+
+    repos, error = get_starred_with_skills()
+    if error:
+        print(f"❌ {error}")
+        return
+
+    if not repos:
+        print("📭 没有找到starred仓库")
+        return
+
+    print(f"⭐ 共 {len(repos)} 个starred仓库\n")
+
+    matched = [r for r in repos if r["matched_skills"]]
+    unmatched = [r for r in repos if not r["matched_skills"]]
+
+    if matched:
+        print("━━━ 🎯 已匹配技能 ━━━")
+        for r in matched[:15]:
+            skills_str = ", ".join(s["name"] for s in r["matched_skills"])
+            print(f"  {r['name']}: {skills_str}")
+        if len(matched) > 15:
+            print(f"  ... 还有 {len(matched) - 15} 个")
+
+    if unmatched:
+        print(f"\n━━━ ❓ 未匹配 ({len(unmatched)}个) ━━━")
+        for r in unmatched[:5]:
+            print(f"  {r['name']}: {r['description'][:60]}...")
 
 
 def cmd_help():
@@ -638,7 +709,14 @@ def main():
         cmd_init()
     elif command == "notify":
         test = len(sys.argv) > 2 and sys.argv[2] == "test"
-        cmd_notify(test=test)
+        evening = len(sys.argv) > 2 and sys.argv[2] == "evening"
+        if evening:
+            result = send_evening_reminder()
+            print(result)
+        elif test:
+            cmd_notify(test=True)
+        else:
+            cmd_notify(test=False)
     elif command == "remind":
         time_str = sys.argv[2] if len(sys.argv) > 2 else "09:00"
         cmd_remind(time_str)
@@ -651,6 +729,14 @@ def main():
     elif command == "generate":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
         cmd_generate(subcmd)
+    elif command == "serve":
+        cmd_serve()
+    elif command == "bot":
+        cmd_bot()
+    elif command == "skills":
+        cmd_skills()
+    elif command == "stars":
+        cmd_stars()
     elif command in ("help", "-h", "--help"):
         cmd_help()
     else:

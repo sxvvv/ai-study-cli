@@ -2,8 +2,8 @@ name: Daily Study Reminder
 
 on:
   schedule:
-    # UTC 时间，北京时间 07:30 = UTC 23:30 (前一天)
-    - cron: '30 23 * * *'
+    # UTC 时间，北京时间 08:00 = UTC 00:00
+    - cron: '0 0 * * *'
   workflow_dispatch:  # 手动触发（测试用）
 
 jobs:
@@ -16,10 +16,17 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install dependencies
+        run: pip install -r requirements.txt 2>/dev/null || true
+
       - name: Setup config and send notifications
         env:
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_NOTES_REPO: ${{ secrets.GITHUB_NOTES_REPO }}
           STUDY_START_DATE: ${{ secrets.STUDY_START_DATE }}
           JOB_START_DATE: ${{ secrets.JOB_START_DATE }}
         run: |
@@ -31,11 +38,13 @@ jobs:
               'pushplus_token': os.environ.get('PUSHPLUS_TOKEN', ''),
               'feishu_webhook': os.environ.get('FEISHU_WEBHOOK', ''),
               'feishu_secret': '',
-              'github_token': '',
-              'github_notes_repo': '',
-              'job_start_date': os.environ.get('JOB_START_DATE', '2026-07-02'),
-              'start_date': os.environ.get('STUDY_START_DATE', '2026-04-02'),
-              'remind_time': '07:30',
+              'telegram_bot_token': os.environ.get('TELEGRAM_BOT_TOKEN', ''),
+              'telegram_chat_id': os.environ.get('TELEGRAM_CHAT_ID', ''),
+              'github_token': os.environ.get('GITHUB_TOKEN', ''),
+              'github_notes_repo': os.environ.get('GITHUB_NOTES_REPO', ''),
+              'job_start_date': os.environ.get('JOB_START_DATE', '2026-07-06'),
+              'start_date': os.environ.get('STUDY_START_DATE', '2026-04-13'),
+              'remind_time': '08:00',
               'initialized': True,
           }
 

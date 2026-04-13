@@ -1,0 +1,354 @@
+{
+  "company": "MetaX (沐曦)",
+  "role": "AI Inference Acceleration Engineer",
+  "last_updated": "2026-04-09",
+  "categories": [
+    {
+      "id": "programming",
+      "name": "编程基础",
+      "jd_relevance": "must-have",
+      "skills": [
+        {
+          "id": "cpp",
+          "name": "C/C++ 编程",
+          "description": "熟练的C/C++编程能力，能写出可维护的高性能代码，较好的debug能力",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["c++", "cpp", "debug", "memory management", "template"],
+          "related_repos": ["llvm/llvm-project", "karpathy/llama2.c", "karpathy/llm.c"],
+          "study_guides": ["phase5_build_framework"]
+        },
+        {
+          "id": "python",
+          "name": "Python 编程",
+          "description": "熟练掌握Python编程，熟悉Linux开发环境及相关开发工具链",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["python", "linux", "toolchain", "pip", "conda"],
+          "related_repos": ["python/cpython"],
+          "study_guides": ["phase1_llm_basics"]
+        }
+      ]
+    },
+    {
+      "id": "cs_fundamentals",
+      "name": "计算机基础",
+      "jd_relevance": "must-have",
+      "skills": [
+        {
+          "id": "os",
+          "name": "操作系统",
+          "description": "扎实的操作系统基础：进程/线程、内存管理、文件系统、IO，为PagedAttention打基础",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["os", "kernel", "process", "thread", "memory", "virtual memory", "paging"],
+          "related_repos": ["torvalds/linux"],
+          "study_guides": ["phase1_llm_basics", "phase3_inference_engine"]
+        },
+        {
+          "id": "architecture",
+          "name": "计算机体系结构",
+          "description": "理解CPU/GPU体系结构、缓存层次、内存模型",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["architecture", "cache", "pipeline", "simd", "gpu arch", "roofline"],
+          "related_repos": [],
+          "study_guides": ["phase2_gpu_programming"]
+        },
+        {
+          "id": "algo_ds",
+          "name": "算法与数据结构",
+          "description": "扎实的算法与数据结构基础，每日LeetCode练习",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["algorithm", "data structure", "complexity", "sorting", "graph", "dp"],
+          "related_repos": [],
+          "study_guides": []
+        }
+      ]
+    },
+    {
+      "id": "gpu_computing",
+      "name": "GPU并行计算",
+      "jd_relevance": "must-have",
+      "skills": [
+        {
+          "id": "cuda",
+          "name": "CUDA编程",
+          "description": "理解CUDA执行模型（thread/block/warp），有CUDA并行计算和高性能计算优化经验",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["cuda", "thread", "block", "warp", "kernel", "shared memory", "tensor core"],
+          "related_repos": ["NVIDIA/cuda-samples", "cuda-mode", "DefTruth/CUDA-Learn-Notes"],
+          "study_guides": ["phase2_gpu_programming"]
+        },
+        {
+          "id": "flash_attention",
+          "name": "FlashAttention算法",
+          "description": "熟悉FlashAttention 1/2/3算法原理和实现，理解tiling和online softmax",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["flashattention", "flash-attn", "attention", "tiling", "online softmax", "recomputation"],
+          "related_repos": ["Dao-AILab/flash-attention"],
+          "study_guides": ["phase2_gpu_programming", "phase3_inference_engine"]
+        },
+        {
+          "id": "operator_dev",
+          "name": "算子开发与优化",
+          "description": "AI算子开发和优化经验，算子融合，极致优化GPU计算库算子",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["operator", "kernel", "fusion", "optimization", "profiling", "ncu"],
+          "related_repos": ["NVIDIA/cutlass", "triton-lang/triton", "xlite-dev/LeetCUDA"],
+          "study_guides": ["phase2_gpu_programming", "phase3_inference_engine"]
+        },
+        {
+          "id": "triton_dsl",
+          "name": "Triton DSL编程",
+          "description": "具有Triton DSL开发经验，能写生产级kernel",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["triton", "dsl", "kernel language", "gpu programming", "auto-tuning"],
+          "related_repos": ["triton-lang/triton", "srush/Triton-Puzzles", "linkedin/Liger-Kernel"],
+          "study_guides": ["phase2_gpu_programming"]
+        },
+        {
+          "id": "simd",
+          "name": "SIMD并行计算",
+          "description": "具有SIMD等并行计算优化经验",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["simd", "avx", "sse", "neon", "vectorization"],
+          "related_repos": [],
+          "study_guides": ["phase2_gpu_programming"]
+        }
+      ]
+    },
+    {
+      "id": "inference",
+      "name": "推理引擎",
+      "jd_relevance": "must-have",
+      "skills": [
+        {
+          "id": "vllm",
+          "name": "vLLM源码深入",
+          "description": "深入阅读vLLM V1源码，理解PagedAttention、Continuous Batching、Scheduler",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["vllm", "paged attention", "continuous batching", "block manager", "cuda graph"],
+          "related_repos": ["vllm-project/vllm", "GeeeekExplorer/nano-vllm", "ubermenchh/mini-vllm"],
+          "study_guides": ["phase3_inference_engine"]
+        },
+        {
+          "id": "sglang",
+          "name": "SGLang源码深入",
+          "description": "深入理解SGLang的RadixAttention、Chunked Prefill、Overlap Scheduler",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["sglang", "radix attention", "prefix caching", "chunked prefill", "overlap scheduling"],
+          "related_repos": ["sgl-project/sglang"],
+          "study_guides": ["phase3_inference_engine"]
+        },
+        {
+          "id": "model_optimization",
+          "name": "模型适配与性能优化",
+          "description": "模型适配、精度调优及性能优化，从模型量化到算子优化到分布式调度",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["quantization", "pruning", "distillation", "optimization", "latency", "throughput"],
+          "related_repos": [],
+          "study_guides": ["phase3_inference_engine", "phase5_build_framework"]
+        },
+        {
+          "id": "quantization",
+          "name": "模型量化技术",
+          "description": "掌握AWQ/GPTQ/FP8/INT4量化，对精度-效率权衡有体感",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["awq", "gptq", "fp8", "int8", "int4", "quantization", "calibration", "bitnet"],
+          "related_repos": ["casper-hansen/AutoAWQ", "IST-DASLab/gptq", "NVIDIA/Model-Optimizer"],
+          "study_guides": ["phase3_inference_engine"]
+        }
+      ]
+    },
+    {
+      "id": "inference_deep",
+      "name": "推理框架深入",
+      "jd_relevance": "nice-to-have",
+      "skills": [
+        {
+          "id": "cpp_frameworks",
+          "name": "C++推理框架",
+          "description": "阅读过KuiperLLama/llama.cpp/TensorRT-LLM等C++推理框架源码",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["cpp inference", "gguf", "tensorrt", "onnx", "graph optimization"],
+          "related_repos": ["SimpleXX/KuiperLLama", "ggerganov/llama.cpp", "NVIDIA/TensorRT-LLM"],
+          "study_guides": ["phase5_build_framework"]
+        },
+        {
+          "id": "low_level_libs",
+          "name": "底层计算库",
+          "description": "熟悉FlashInfer、Cutlass、cuBLAS、NCCL等底层库的设计哲学",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["flashinfer", "cutlass", "cublas", "nccl", "gemm", "communication"],
+          "related_repos": ["flashinfer-ai/flashinfer", "NVIDIA/cutlass", "NVIDIA/nccl"],
+          "study_guides": ["phase3_inference_engine", "phase5_build_framework"]
+        },
+        {
+          "id": "spec_decoding",
+          "name": "Speculative Decoding",
+          "description": "理解draft-verify范式、Medusa/Eagle等变体",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["speculative decoding", "medusa", "eagle", "draft model", "verify"],
+          "related_repos": ["hemingkx/SpeculativeDecodingPapers"],
+          "study_guides": ["phase5_build_framework"]
+        }
+      ]
+    },
+    {
+      "id": "rl_training",
+      "name": "RL训练基建",
+      "jd_relevance": "nice-to-have",
+      "skills": [
+        {
+          "id": "verl",
+          "name": "veRL框架",
+          "description": "掌握veRL架构，能跑通PPO/GRPO训练，理解Ray worker编排",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["verl", "ppo", "grpo", "rlhf", "ray", "distributed training"],
+          "related_repos": ["volcengine/verl"],
+          "study_guides": ["phase4_rl_training"]
+        },
+        {
+          "id": "ray",
+          "name": "Ray分布式框架",
+          "description": "理解Ray Actor/Task/Placement Group，能编写分布式训练脚本",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["ray", "actor", "task", "placement group", "distributed", "cluster"],
+          "related_repos": ["ray-project/ray"],
+          "study_guides": ["phase4_rl_training"]
+        },
+        {
+          "id": "rlhf_algorithms",
+          "name": "RLHF算法(PPO/DPO/GRPO)",
+          "description": "理解PPO/DPO/GRPO算法原理和实现差异",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["ppo", "dpo", "grpo", "rlhf", "reward model", "advantage", "gae"],
+          "related_repos": ["OpenRLHF/OpenRLHF", "huggingface/trl"],
+          "study_guides": ["phase1_llm_basics", "phase4_rl_training"]
+        }
+      ]
+    },
+    {
+      "id": "multimodal",
+      "name": "多模态AI",
+      "jd_relevance": "nice-to-have",
+      "skills": [
+        {
+          "id": "clip",
+          "name": "CLIP视觉-语言对齐",
+          "description": "理解CLIP对比学习原理、双塔架构、图文对齐",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["clip", "contrastive learning", "vision-language", "vit"],
+          "related_repos": ["openai/CLIP"],
+          "study_guides": ["phase1_llm_basics"]
+        },
+        {
+          "id": "vlm",
+          "name": "视觉语言模型(VLM)",
+          "description": "理解LLaVA/Qwen-VL等VLM架构，能部署和微调VLM",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["vlm", "llava", "qwen-vl", "vision encoder", "projection", "multimodal"],
+          "related_repos": ["haotian-liu/LLaVA", "jingyaogong/minimind-v"],
+          "study_guides": ["phase1_llm_basics", "phase6_metax_maca"]
+        }
+      ]
+    },
+    {
+      "id": "hot_topics",
+      "name": "前沿热点",
+      "jd_relevance": "nice-to-have",
+      "skills": [
+        {
+          "id": "moe",
+          "name": "MoE推理与训练",
+          "description": "理解DeepSeek-V3/Qwen3的MoE架构、Expert并行、Offloading",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["moe", "mixture of experts", "expert parallelism", "offloading", "routing"],
+          "related_repos": [],
+          "study_guides": ["phase3_inference_engine", "phase5_build_framework"]
+        },
+        {
+          "id": "long_context",
+          "name": "长上下文技术",
+          "description": "理解RoPE外推、YaRN、LongRoPE等长上下文扩展技术",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["rope", "yarn", "long context", "context extension", "position interpolation"],
+          "related_repos": [],
+          "study_guides": ["phase3_inference_engine"]
+        }
+      ]
+    },
+    {
+      "id": "heterogeneous",
+      "name": "异构计算",
+      "jd_relevance": "nice-to-have",
+      "skills": [
+        {
+          "id": "rocm_hip",
+          "name": "ROCm/HIP",
+          "description": "具有CUDA到HIP转换经验，理解ROCm/OpenCL开发",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["rocm", "hip", "hipify", "opencl", "heterogeneous"],
+          "related_repos": ["ROCm/ROCm"],
+          "study_guides": ["phase6_metax_maca"]
+        }
+      ]
+    },
+    {
+      "id": "maca",
+      "name": "国产GPU适配",
+      "jd_relevance": "nice-to-have",
+      "skills": [
+        {
+          "id": "maca",
+          "name": "MACA适配",
+          "description": "沐曦MACA平台适配，mc-clang转换，软硬件协同优化",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["maca", "metax", "mc-clang", "hip", "macablas", "macadnn", "macanccl"],
+          "related_repos": [],
+          "study_guides": ["phase6_metax_maca"]
+        }
+      ]
+    },
+    {
+      "id": "demonstration",
+      "name": "技术展示",
+      "jd_relevance": "nice-to-have",
+      "skills": [
+        {
+          "id": "tech_blog",
+          "name": "技术博客/GitHub",
+          "description": "有个人技术博客/GitHub，能展示对系统问题的深度思考",
+          "level": 0,
+          "max_level": 5,
+          "keywords": ["blog", "github", "portfolio", "open source", "contribution"],
+          "related_repos": [],
+          "study_guides": []
+        }
+      ]
+    }
+  ]
+}
